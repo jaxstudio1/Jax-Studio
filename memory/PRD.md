@@ -43,6 +43,20 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 5 (May 2026) — Font picker + multi-line cube text
+- Added a **font picker** to the cube-text section in the admin panel:
+  - 8 display faces: Boldonse (default), Bricolage Grotesque, Big Shoulders Display, Archivo Black, Bebas Neue, Anton, Fraunces, Space Grotesk
+  - Compact "Aa" preview swatch alongside the dropdown so you can read the face at a glance
+  - Selecting a font live-renders both cube text textures + shows status hint until you Publish
+  - Family is loaded via `document.fonts.load()` before canvas drawing so text never falls back
+  - Backend stores the choice in a new `cube_font` field, validated against the allow-list
+- **Multi-line cube text**:
+  - Replaced single-line inputs with `<textarea rows="2">` so Shift + Enter inserts a line break naturally
+  - `buildTextCanvas` re-written to split on `\n`, auto-fit the largest font size where the widest line stays within 88% of the canvas and the stack height stays within 84%
+  - Up to 4 lines per word; max 30 chars (extended from 24)
+  - Live re-render on each keystroke (debounced 220 ms) so editing feels instant
+  - Verified: textarea correctly captures Shift+Enter as `\n`, Publish saves "OPEN\nSTUDIO" + "BY\nJAX" intact
+
 ### Phase 4 (May 2026) — Admin Control Panel
 - **Auth**: single shared admin password (bcrypt-hashed in `.env`), HS256 JWT (7-day expiry), in-memory IP brute-force limiter (5 / 15 min)
 - **Bottom-left "ADMIN" launcher pill** (with lock icon) → opens password modal → opens floating control panel that slides in from the left

@@ -48,7 +48,7 @@
     <!-- Display font: Boldonse (bold geometric display) + Archivo (utility) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Bebas+Neue&family=Big+Shoulders+Display:wght@700;800;900&family=Bricolage+Grotesque:opsz,wght@10..48,700;10..48,800&family=Anton&family=Fraunces:opsz,wght@9..144,700;9..144,800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="base.css" />
     <script>
@@ -201,16 +201,33 @@
 
           <section class="admin-section">
             <h3 class="admin-section__title">Cube text</h3>
+            <p class="admin-section__hint">Shift + Enter for a line break · max 30 chars per word</p>
             <div class="admin-grid-2">
               <label class="contact-form__field">
                 <span class="contact-form__label">Word 1</span>
-                <input type="text" maxlength="14" data-testid="admin-cube-text-1" placeholder="COMING" />
+                <textarea rows="2" maxlength="30" class="admin-cube-text" data-testid="admin-cube-text-1" placeholder="COMING"></textarea>
               </label>
               <label class="contact-form__field">
                 <span class="contact-form__label">Word 2</span>
-                <input type="text" maxlength="14" data-testid="admin-cube-text-2" placeholder="SOON" />
+                <textarea rows="2" maxlength="30" class="admin-cube-text" data-testid="admin-cube-text-2" placeholder="SOON"></textarea>
               </label>
             </div>
+            <label class="contact-form__field">
+              <span class="contact-form__label">Font</span>
+              <div class="admin-font">
+                <select class="admin-font__select" data-testid="admin-cube-font">
+                  <option value="Boldonse">Boldonse — bold geometric (default)</option>
+                  <option value="Bricolage Grotesque">Bricolage Grotesque — modern variable</option>
+                  <option value="Big Shoulders Display">Big Shoulders Display — condensed industrial</option>
+                  <option value="Archivo Black">Archivo Black — utility heavy</option>
+                  <option value="Bebas Neue">Bebas Neue — tall sans</option>
+                  <option value="Anton">Anton — narrow grotesque</option>
+                  <option value="Fraunces">Fraunces — high-contrast serif</option>
+                  <option value="Space Grotesk">Space Grotesk — geometric sans</option>
+                </select>
+                <span class="admin-font__preview" data-testid="admin-font-preview">Aa</span>
+              </div>
+            </label>
           </section>
 
           <section class="admin-section">

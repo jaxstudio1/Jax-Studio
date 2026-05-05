@@ -121,12 +121,25 @@ def _validate_hex_color(v: Optional[str]) -> Optional[str]:
     return v
 
 
+ALLOWED_CUBE_FONTS = {
+    "Boldonse",
+    "Bricolage Grotesque",
+    "Big Shoulders Display",
+    "Archivo Black",
+    "Bebas Neue",
+    "Anton",
+    "Fraunces",
+    "Space Grotesk",
+}
+
+
 class Settings(BaseModel):
     """Singleton site settings doc (id='main'). All fields optional → null = use default."""
     model_config = ConfigDict(extra="ignore")
     logo_url: Optional[str] = None       # /api/uploads/<file> or null = bundled default
-    cube_text_1: Optional[str] = None    # default "COMING"
-    cube_text_2: Optional[str] = None    # default "SOON"
+    cube_text_1: Optional[str] = None    # default "COMING" (supports \n line breaks)
+    cube_text_2: Optional[str] = None    # default "SOON"   (supports \n line breaks)
+    cube_font: Optional[str] = None      # default "Boldonse"
     brand_title: Optional[str] = None    # default "Jax Studio"
     brand_tagline: Optional[str] = None  # default "Coming Soon"
     welcome_heading: Optional[str] = None      # default "Jax Studio"
@@ -137,8 +150,9 @@ class Settings(BaseModel):
 
 class SettingsUpdate(BaseModel):
     logo_url: Optional[str] = Field(default=None, max_length=400)
-    cube_text_1: Optional[str] = Field(default=None, max_length=24)
-    cube_text_2: Optional[str] = Field(default=None, max_length=24)
+    cube_text_1: Optional[str] = Field(default=None, max_length=60)
+    cube_text_2: Optional[str] = Field(default=None, max_length=60)
+    cube_font: Optional[str] = Field(default=None, max_length=60)
     brand_title: Optional[str] = Field(default=None, max_length=80)
     brand_tagline: Optional[str] = Field(default=None, max_length=80)
     welcome_heading: Optional[str] = Field(default=None, max_length=80)
@@ -149,6 +163,18 @@ class SettingsUpdate(BaseModel):
     @classmethod
     def _color(cls, v):
         return _validate_hex_color(v)
+
+    @field_validator('cube_font')
+    @classmethod
+    def _font(cls, v):
+        if v is None:
+            return None
+        v = v.strip()
+        if v == "":
+            return None
+        if v not in ALLOWED_CUBE_FONTS:
+            raise ValueError(f"cube_font must be one of: {sorted(ALLOWED_CUBE_FONTS)}")
+        return v
 
 
 # ================= Email helpers =================
@@ -467,6 +493,7 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
         {"id": SETTINGS_DOC_ID},
         {"$set": {
             "logo_url": None, "cube_text_1": None, "cube_text_2": None,
+            "cube_font": None,
             "brand_title": None, "brand_tagline": None,
             "welcome_heading": None, "welcome_sub": None,
             "accent_color": None,

@@ -17,12 +17,29 @@ const STORAGE_KEY = 'jax_admin_token'
 const DEFAULTS = {
   cube_text_1: 'COMING',
   cube_text_2: 'SOON',
+  cube_font: 'Boldonse',
   brand_title: 'Jax Studio',
   brand_tagline: 'Coming Soon',
   welcome_heading: 'Jax Studio',
   welcome_sub: 'Graphic Design · Portfolio & Studio',
   accent_color: '#ff5722',
 }
+
+// Display fonts available in the admin font picker. The link tag in index.html
+// preloads all of them via Google Fonts so canvas drawing can use them
+// after a single document.fonts.load() call below.
+const FONT_OPTIONS = [
+  { id: 'Boldonse',              weight: 400 },
+  { id: 'Bricolage Grotesque',   weight: 800 },
+  { id: 'Big Shoulders Display', weight: 900 },
+  { id: 'Archivo Black',         weight: 400 },
+  { id: 'Bebas Neue',            weight: 400 },
+  { id: 'Anton',                 weight: 400 },
+  { id: 'Fraunces',              weight: 800 },
+  { id: 'Space Grotesk',         weight: 700 },
+]
+
+const fontMeta = (family) => FONT_OPTIONS.find((f) => f.id === family) || FONT_OPTIONS[0]
 
 // ---------- helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel)
@@ -109,40 +126,71 @@ const buildLogoCanvas = async (url, size = 1024) => {
 }
 
 /**
- * Render a piece of text to a 1024×1024 white-on-transparent canvas using the
- * Boldonse display face (already loaded for the welcome screen). Letter
- * spacing is widened to read clearly inside the cube.
+ * Ensure a Google Font is available on the canvas before drawing text with it.
+ * The <link> tag in index.html preloads the *.css and the woff2 files, but the
+ * browser only fetches the actual font binary lazily — so we explicitly call
+ * document.fonts.load() to wait for it.
  */
-const buildTextCanvas = (text, size = 1024) => {
+const ensureFontLoaded = async (family, weight = 700) => {
+  if (!document.fonts || !document.fonts.load) return
+  try {
+    // Trigger load at multiple sizes so that any subsequent measureText call
+    // doesn't fall back to the system font.
+    await document.fonts.load(`${weight} 200px "${family}"`)
+    await document.fonts.load(`${weight} 100px "${family}"`)
+    await document.fonts.ready
+  } catch (_) { /* font may not exist; canvas will fall back gracefully */ }
+}
+
+/**
+ * Render multi-line text to a 1024×1024 white-on-transparent canvas.
+ * Lines are split on \n. Font size is auto-fitted so the widest line stays
+ * within ~88% of the canvas and the stack height stays within ~80%.
+ */
+const buildTextCanvas = (rawText, family = DEFAULTS.cube_font, size = 1024) => {
+  const meta = fontMeta(family)
+  const text = String(rawText == null ? '' : rawText)
+  // Split on newlines, normalize blanks, cap at 4 lines for sanity
+  const lines = text
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .slice(0, 4)
+
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
-
   ctx.fillStyle = '#ffffff'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
 
-  // Try increasingly smaller sizes until the text fits the safe area (90% wide)
-  const safe = size * 0.9
-  const tryFonts = ['Boldonse', 'Archivo Black', 'Arial Black', 'sans-serif']
-  for (let f of tryFonts) {
-    let fontSize = 360
-    while (fontSize > 60) {
-      ctx.font = `${fontSize}px "${f}", sans-serif`
-      const w = ctx.measureText(text).width
-      if (w <= safe) break
-      fontSize -= 20
-    }
-    // Use the first font that didn't bottom out
-    ctx.font = `${fontSize}px "${f}", sans-serif`
-    if (ctx.measureText(text).width <= safe) {
-      ctx.fillText(text, size / 2, size / 2)
-      return canvas
-    }
+  if (lines.length === 0) return canvas
+
+  const safeW = size * 0.88
+  const safeH = size * 0.84
+  const lineHeightFactor = 1.05  // Boldonse is heavy; tight line-height reads better
+  const fontWeight = meta.weight
+
+  // Auto-fit: pick largest font size where every line fits horizontally and
+  // the total stacked height fits vertically.
+  let fontSize = 480
+  while (fontSize > 60) {
+    ctx.font = `${fontWeight} ${fontSize}px "${family}", "Archivo Black", sans-serif`
+    const widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0)
+    const totalH = lines.length * fontSize * lineHeightFactor
+    if (widest <= safeW && totalH <= safeH) break
+    fontSize -= 16
   }
-  // Fallback — draw whatever we got
-  ctx.fillText(text, size / 2, size / 2)
+  ctx.font = `${fontWeight} ${fontSize}px "${family}", "Archivo Black", sans-serif`
+
+  // Vertical centering for the line stack
+  const lineH = fontSize * lineHeightFactor
+  const stackH = lines.length * lineH
+  const startY = (size - stackH) / 2 + lineH / 2
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], size / 2, startY + i * lineH)
+  }
   return canvas
 }
 
@@ -162,6 +210,8 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const panelClose = $('[data-testid="admin-panel-close"]')
   const inputCubeText1 = $('[data-testid="admin-cube-text-1"]')
   const inputCubeText2 = $('[data-testid="admin-cube-text-2"]')
+  const inputCubeFont = $('[data-testid="admin-cube-font"]')
+  const fontPreviewEl = $('[data-testid="admin-font-preview"]')
   const inputBrandTitle = $('[data-testid="admin-brand-title"]')
   const inputBrandTagline = $('[data-testid="admin-brand-tagline"]')
   const inputWelcomeHeading = $('[data-testid="admin-welcome-heading"]')
@@ -243,14 +293,24 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   }
 
   const applyCubeTextures = async (s) => {
-    // Cube text labels
+    // Cube text labels — multi-line aware
+    const family = s.cube_font || DEFAULTS.cube_font
+    await ensureFontLoaded(family, fontMeta(family).weight)
     const t1 = (s.cube_text_1 || '').trim()
     const t2 = (s.cube_text_2 || '').trim()
     if (t1) {
-      try { text1Texture.reload(buildTextCanvas(t1.toUpperCase())) } catch (e) { /* */ }
+      try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family)) } catch (e) { /* */ }
     }
     if (t2) {
-      try { text2Texture.reload(buildTextCanvas(t2.toUpperCase())) } catch (e) { /* */ }
+      try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family)) } catch (e) { /* */ }
+    }
+    // If only the font changed (no custom text yet), still re-render the
+    // bundled defaults with the new face so the preview reflects the choice.
+    if (!t1 && s.cube_font) {
+      try { text1Texture.reload(buildTextCanvas(DEFAULTS.cube_text_1, family)) } catch (e) { /* */ }
+    }
+    if (!t2 && s.cube_font) {
+      try { text2Texture.reload(buildTextCanvas(DEFAULTS.cube_text_2, family)) } catch (e) { /* */ }
     }
     // Logo
     if (s.logo_url) {
@@ -273,6 +333,11 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const fillFormFromSettings = (s) => {
     inputCubeText1.value = s.cube_text_1 || ''
     inputCubeText2.value = s.cube_text_2 || ''
+    inputCubeFont.value = s.cube_font || DEFAULTS.cube_font
+    if (fontPreviewEl) {
+      fontPreviewEl.style.fontFamily = `"${inputCubeFont.value}", sans-serif`
+      fontPreviewEl.style.fontWeight = String(fontMeta(inputCubeFont.value).weight)
+    }
     inputBrandTitle.value = s.brand_title || ''
     inputBrandTagline.value = s.brand_tagline || ''
     inputWelcomeHeading.value = s.welcome_heading || ''
@@ -294,6 +359,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const collectFormSettings = () => ({
     cube_text_1: inputCubeText1.value.trim() || null,
     cube_text_2: inputCubeText2.value.trim() || null,
+    cube_font: inputCubeFont.value || null,
     brand_title: inputBrandTitle.value.trim() || null,
     brand_tagline: inputBrandTagline.value.trim() || null,
     welcome_heading: inputWelcomeHeading.value.trim() || null,
@@ -379,6 +445,38 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   })
 
   panelClose.addEventListener('click', closePanel)
+
+  // Font picker — update preview swatch + live-render the cube text
+  inputCubeFont.addEventListener('change', async () => {
+    const family = inputCubeFont.value
+    if (fontPreviewEl) {
+      fontPreviewEl.style.fontFamily = `"${family}", sans-serif`
+      fontPreviewEl.style.fontWeight = String(fontMeta(family).weight)
+    }
+    await ensureFontLoaded(family, fontMeta(family).weight)
+    const t1 = inputCubeText1.value.trim() || DEFAULTS.cube_text_1
+    const t2 = inputCubeText2.value.trim() || DEFAULTS.cube_text_2
+    try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family)) } catch (_) { /* */ }
+    try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family)) } catch (_) { /* */ }
+    setPanelStatus(`Font: ${family} · click Publish to save.`, 'success')
+  })
+
+  // Live-render cube text on each keystroke (so Shift+Enter feels instant)
+  const liveRenderCubeText = (() => {
+    let t = null
+    return () => {
+      if (t) clearTimeout(t)
+      t = setTimeout(() => {
+        const family = inputCubeFont.value || DEFAULTS.cube_font
+        const t1 = inputCubeText1.value.trim() || DEFAULTS.cube_text_1
+        const t2 = inputCubeText2.value.trim() || DEFAULTS.cube_text_2
+        try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family)) } catch (_) { /* */ }
+        try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family)) } catch (_) { /* */ }
+      }, 220)
+    }
+  })()
+  inputCubeText1.addEventListener('input', liveRenderCubeText)
+  inputCubeText2.addEventListener('input', liveRenderCubeText)
 
   // accent picker sync
   inputAccentPicker.addEventListener('input', (e) => {
