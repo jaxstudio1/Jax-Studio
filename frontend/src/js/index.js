@@ -87,6 +87,89 @@ stageEl.addEventListener('touchcancel', () => {
 })
 
 /**
+ * Device-orientation tilt parallax (mobile)
+ * - gamma: left-right tilt, range ~[-90, 90]    → pointer.x
+ * - beta : front-back tilt, range ~[-180, 180]  → pointer.y
+ * Calibration: capture the visitor's resting orientation as the origin.
+ * iOS 13+ requires a permission gesture, so we wire the request to the
+ * first user interaction with the page and silently fall back if denied.
+ */
+const orientation = {
+  enabled: false,
+  baseGamma: null,
+  baseBeta: null,
+  // sensitivity: how many degrees of tilt = full deflection
+  range: 22,
+}
+
+const isCoarsePointer = (() => {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+  } catch (_) {
+    return false
+  }
+})()
+
+const handleOrientation = (event) => {
+  if (event.gamma == null || event.beta == null) return
+  // first reading → calibrate to a neutral pose
+  if (orientation.baseGamma == null) {
+    orientation.baseGamma = event.gamma
+    orientation.baseBeta = event.beta
+    return
+  }
+  const dGamma = event.gamma - orientation.baseGamma
+  const dBeta = event.beta - orientation.baseBeta
+  const nx = Math.max(-1, Math.min(1, dGamma / orientation.range))
+  // beta tilt: tilting top of phone forward (negative beta) should pull cube up
+  const ny = Math.max(-1, Math.min(1, dBeta / orientation.range))
+  pointer.x = nx
+  pointer.y = ny
+  pointer.active = true
+}
+
+const enableOrientation = () => {
+  if (orientation.enabled) return
+  if (typeof window === 'undefined' || !('DeviceOrientationEvent' in window)) return
+
+  const attach = () => {
+    window.addEventListener('deviceorientation', handleOrientation, true)
+    orientation.enabled = true
+  }
+
+  // iOS 13+ permission flow
+  const Req = window.DeviceOrientationEvent && window.DeviceOrientationEvent.requestPermission
+  if (typeof Req === 'function') {
+    Req()
+      .then((state) => {
+        if (state === 'granted') attach()
+      })
+      .catch(() => {
+        /* user denied or context not supported — silently fall back to touch */
+      })
+  } else {
+    attach()
+  }
+}
+
+// Try to enable on first user gesture (required for iOS).
+if (isCoarsePointer) {
+  const oneShotEnable = () => {
+    enableOrientation()
+    window.removeEventListener('touchstart', oneShotEnable, true)
+    window.removeEventListener('click', oneShotEnable, true)
+  }
+  window.addEventListener('touchstart', oneShotEnable, {capture: true, passive: true})
+  window.addEventListener('click', oneShotEnable, {capture: true})
+}
+
+// Re-calibrate when device orientation changes (portrait <-> landscape)
+window.addEventListener('orientationchange', () => {
+  orientation.baseGamma = null
+  orientation.baseBeta = null
+})
+
+/**
  * Click → ripple + welcome overlay
  */
 const overlay = document.querySelector('.welcome-overlay')

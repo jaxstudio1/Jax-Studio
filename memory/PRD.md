@@ -27,6 +27,20 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 - dat.gui controls + stats panel disabled (stubs)
 
 ### Phase 2 (May 2026) — Contact + SEO + Font
+[…unchanged…]
+
+### Phase 3 (May 2026) — Logo refresh + Device tilt
+- Replaced cube logo texture with the user's official `J.svg` artifact
+  - SVG rendered at high res via cairosvg → forced white-on-transparent → centered on a 1024×1024 canvas → saved to `/app/frontend/src/assets/logo.png`
+- **Mobile DeviceOrientation tilt parallax**:
+  - Listens to `deviceorientation` (gamma → x, beta → y) and feeds the same `pointer` state as mouse / touch
+  - Auto-calibrates the first reading as the user's neutral pose (so resting hold ≈ 0,0)
+  - Sensitivity tuned to ~22° = full deflection (gentle, not jittery)
+  - iOS 13+ permission gate: request triggered on the first user gesture (touch/click), fails silently if denied
+  - Re-calibrates on `orientationchange` (portrait ↔ landscape)
+  - Only auto-attaches on coarse-pointer devices (phones / tablets) — desktop unaffected
+
+### Phase 2 (May 2026) — Contact + SEO + Font
 - **Contact form**:
   - "Get in Touch" pill button (top-right, with pulsing accent dot)
   - "Start a Project" CTA inside the welcome overlay
