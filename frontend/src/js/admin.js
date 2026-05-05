@@ -1,29 +1,36 @@
 /**
  * Jax Studio — admin control panel
  * Login / settings / live preview & publish.
- *
- * Exposes:
- *   initAdmin({ logoTexture, text1Texture, text2Texture })
- *
- * Settings shape (server-side):
- *   { logo_url, cube_text_1, cube_text_2,
- *     brand_title, brand_tagline,
- *     welcome_heading, welcome_sub,
- *     accent_color }
- * Any null/missing field falls back to the bundled default.
  */
 
+import {
+  setGradientState,
+  resetGradientState,
+  composeGradient,
+  GRADIENT_PRESETS,
+} from '~js/gradient-state'
+
 const STORAGE_KEY = 'jax_admin_token'
+const PANEL_WIDTH_KEY = 'jax_admin_panel_width'
 const DEFAULTS = {
   cube_text_1: 'COMING',
   cube_text_2: 'SOON',
   cube_font: 'Boldonse',
+  cube_letter_spacing: 0.06,
+  cube_line_spacing: 1.05,
+  gradient_preset: 'default',
+  gradient_color_a: null,
+  gradient_color_b: null,
   brand_title: 'Jax Studio',
   brand_tagline: 'Coming Soon',
   welcome_heading: 'Jax Studio',
   welcome_sub: 'Graphic Design · Portfolio & Studio',
   accent_color: '#ff5722',
 }
+
+const PANEL_WIDTH_MIN = 320
+const PANEL_WIDTH_MAX = 600
+const PANEL_WIDTH_DEFAULT = 380
 
 // Display fonts available in the admin font picker. The link tag in index.html
 // preloads all of them via Google Fonts so canvas drawing can use them
@@ -147,10 +154,12 @@ const ensureFontLoaded = async (family, weight = 700) => {
  * Lines are split on \n. Font size is auto-fitted so the widest line stays
  * within ~88% of the canvas and the stack height stays within ~80%.
  */
-const buildTextCanvas = (rawText, family = DEFAULTS.cube_font, size = 1024) => {
+const buildTextCanvas = (rawText, family = DEFAULTS.cube_font, opts = {}, size = 1024) => {
   const meta = fontMeta(family)
   const text = String(rawText == null ? '' : rawText)
-  // Split on newlines, normalize blanks, cap at 4 lines for sanity
+  const letterSpacingEm = typeof opts.letterSpacing === 'number' ? opts.letterSpacing : DEFAULTS.cube_letter_spacing
+  const lineHeightFactor = typeof opts.lineSpacing === 'number' ? opts.lineSpacing : DEFAULTS.cube_line_spacing
+
   const lines = text
     .split(/\r?\n/)
     .map((s) => s.trim())
@@ -169,22 +178,25 @@ const buildTextCanvas = (rawText, family = DEFAULTS.cube_font, size = 1024) => {
 
   const safeW = size * 0.88
   const safeH = size * 0.84
-  const lineHeightFactor = 1.05  // Boldonse is heavy; tight line-height reads better
   const fontWeight = meta.weight
 
-  // Auto-fit: pick largest font size where every line fits horizontally and
-  // the total stacked height fits vertically.
+  // Auto-fit
   let fontSize = 480
   while (fontSize > 60) {
     ctx.font = `${fontWeight} ${fontSize}px "${family}", "Archivo Black", sans-serif`
+    if ('letterSpacing' in ctx) {
+      try { ctx.letterSpacing = `${(letterSpacingEm * fontSize).toFixed(2)}px` } catch (_) { /* */ }
+    }
     const widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0)
     const totalH = lines.length * fontSize * lineHeightFactor
     if (widest <= safeW && totalH <= safeH) break
     fontSize -= 16
   }
   ctx.font = `${fontWeight} ${fontSize}px "${family}", "Archivo Black", sans-serif`
+  if ('letterSpacing' in ctx) {
+    try { ctx.letterSpacing = `${(letterSpacingEm * fontSize).toFixed(2)}px` } catch (_) { /* */ }
+  }
 
-  // Vertical centering for the line stack
   const lineH = fontSize * lineHeightFactor
   const stackH = lines.length * lineH
   const startY = (size - stackH) / 2 + lineH / 2
@@ -208,10 +220,22 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
 
   const panel = $('[data-testid="admin-panel"]')
   const panelClose = $('[data-testid="admin-panel-close"]')
+  const panelResizer = $('[data-testid="admin-panel-resizer"]')
   const inputCubeText1 = $('[data-testid="admin-cube-text-1"]')
   const inputCubeText2 = $('[data-testid="admin-cube-text-2"]')
   const inputCubeFont = $('[data-testid="admin-cube-font"]')
   const fontPreviewEl = $('[data-testid="admin-font-preview"]')
+  const inputLetterSpacing = $('[data-testid="admin-letter-spacing"]')
+  const labelLetterSpacing = $('[data-testid="admin-letter-spacing-value"]')
+  const inputLineSpacing = $('[data-testid="admin-line-spacing"]')
+  const labelLineSpacing = $('[data-testid="admin-line-spacing-value"]')
+  const inputGradientPreset = $('[data-testid="admin-gradient-preset"]')
+  const inputGradColorA = $('[data-testid="admin-gradient-color-a"]')
+  const inputGradColorAHex = $('[data-testid="admin-gradient-color-a-hex"]')
+  const btnGradColorAClear = $('[data-testid="admin-gradient-color-a-clear"]')
+  const inputGradColorB = $('[data-testid="admin-gradient-color-b"]')
+  const inputGradColorBHex = $('[data-testid="admin-gradient-color-b-hex"]')
+  const btnGradColorBClear = $('[data-testid="admin-gradient-color-b-clear"]')
   const inputBrandTitle = $('[data-testid="admin-brand-title"]')
   const inputBrandTagline = $('[data-testid="admin-brand-tagline"]')
   const inputWelcomeHeading = $('[data-testid="admin-welcome-heading"]')
@@ -293,24 +317,25 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   }
 
   const applyCubeTextures = async (s) => {
-    // Cube text labels — multi-line aware
+    // Cube text labels — multi-line aware, with letter & line spacing
     const family = s.cube_font || DEFAULTS.cube_font
+    const ls = (typeof s.cube_letter_spacing === 'number') ? s.cube_letter_spacing : DEFAULTS.cube_letter_spacing
+    const lh = (typeof s.cube_line_spacing === 'number') ? s.cube_line_spacing : DEFAULTS.cube_line_spacing
+    const opts = { letterSpacing: ls, lineSpacing: lh }
     await ensureFontLoaded(family, fontMeta(family).weight)
     const t1 = (s.cube_text_1 || '').trim()
     const t2 = (s.cube_text_2 || '').trim()
     if (t1) {
-      try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family)) } catch (e) { /* */ }
+      try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family, opts)) } catch (e) { /* */ }
     }
     if (t2) {
-      try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family)) } catch (e) { /* */ }
+      try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family, opts)) } catch (e) { /* */ }
     }
-    // If only the font changed (no custom text yet), still re-render the
-    // bundled defaults with the new face so the preview reflects the choice.
-    if (!t1 && s.cube_font) {
-      try { text1Texture.reload(buildTextCanvas(DEFAULTS.cube_text_1, family)) } catch (e) { /* */ }
+    if (!t1 && (s.cube_font || ls !== DEFAULTS.cube_letter_spacing || lh !== DEFAULTS.cube_line_spacing)) {
+      try { text1Texture.reload(buildTextCanvas(DEFAULTS.cube_text_1, family, opts)) } catch (e) { /* */ }
     }
-    if (!t2 && s.cube_font) {
-      try { text2Texture.reload(buildTextCanvas(DEFAULTS.cube_text_2, family)) } catch (e) { /* */ }
+    if (!t2 && (s.cube_font || ls !== DEFAULTS.cube_letter_spacing || lh !== DEFAULTS.cube_line_spacing)) {
+      try { text2Texture.reload(buildTextCanvas(DEFAULTS.cube_text_2, family, opts)) } catch (e) { /* */ }
     }
     // Logo
     if (s.logo_url) {
@@ -324,8 +349,15 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     }
   }
 
+  const applyGradient = (s) => {
+    const preset = s.gradient_preset || DEFAULTS.gradient_preset
+    const colors = composeGradient(preset, s.gradient_color_a, s.gradient_color_b)
+    setGradientState(colors)
+  }
+
   const applySettings = async (s) => {
     applyAccent(s.accent_color || DEFAULTS.accent_color)
+    applyGradient(s)
     applyTextDOM(s)
     await applyCubeTextures(s)
   }
@@ -338,6 +370,19 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       fontPreviewEl.style.fontFamily = `"${inputCubeFont.value}", sans-serif`
       fontPreviewEl.style.fontWeight = String(fontMeta(inputCubeFont.value).weight)
     }
+    const ls = (typeof s.cube_letter_spacing === 'number') ? s.cube_letter_spacing : DEFAULTS.cube_letter_spacing
+    const lh = (typeof s.cube_line_spacing === 'number') ? s.cube_line_spacing : DEFAULTS.cube_line_spacing
+    inputLetterSpacing.value = ls
+    labelLetterSpacing.textContent = `${ls.toFixed(2)} em`
+    inputLineSpacing.value = lh
+    labelLineSpacing.textContent = `${lh.toFixed(2)}×`
+
+    inputGradientPreset.value = s.gradient_preset || DEFAULTS.gradient_preset
+    inputGradColorAHex.value = s.gradient_color_a ? s.gradient_color_a.toUpperCase() : ''
+    inputGradColorBHex.value = s.gradient_color_b ? s.gradient_color_b.toUpperCase() : ''
+    if (s.gradient_color_a) inputGradColorA.value = s.gradient_color_a
+    if (s.gradient_color_b) inputGradColorB.value = s.gradient_color_b
+
     inputBrandTitle.value = s.brand_title || ''
     inputBrandTagline.value = s.brand_tagline || ''
     inputWelcomeHeading.value = s.welcome_heading || ''
@@ -360,6 +405,11 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     cube_text_1: inputCubeText1.value.trim() || null,
     cube_text_2: inputCubeText2.value.trim() || null,
     cube_font: inputCubeFont.value || null,
+    cube_letter_spacing: parseFloat(inputLetterSpacing.value),
+    cube_line_spacing: parseFloat(inputLineSpacing.value),
+    gradient_preset: inputGradientPreset.value || null,
+    gradient_color_a: inputGradColorAHex.value.trim() || null,
+    gradient_color_b: inputGradColorBHex.value.trim() || null,
     brand_title: inputBrandTitle.value.trim() || null,
     brand_tagline: inputBrandTagline.value.trim() || null,
     welcome_heading: inputWelcomeHeading.value.trim() || null,
@@ -478,6 +528,116 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   inputCubeText1.addEventListener('input', liveRenderCubeText)
   inputCubeText2.addEventListener('input', liveRenderCubeText)
 
+  // Letter & line spacing sliders — live update (debounced 80ms feels snappy
+  // but doesn't thrash the GPU)
+  const liveSpacingRender = (() => {
+    let t = null
+    return () => {
+      if (t) clearTimeout(t)
+      t = setTimeout(() => {
+        const family = inputCubeFont.value || DEFAULTS.cube_font
+        const opts = {
+          letterSpacing: parseFloat(inputLetterSpacing.value),
+          lineSpacing: parseFloat(inputLineSpacing.value),
+        }
+        const t1 = inputCubeText1.value.trim() || DEFAULTS.cube_text_1
+        const t2 = inputCubeText2.value.trim() || DEFAULTS.cube_text_2
+        try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family, opts)) } catch (_) { /* */ }
+        try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family, opts)) } catch (_) { /* */ }
+      }, 80)
+    }
+  })()
+  inputLetterSpacing.addEventListener('input', () => {
+    labelLetterSpacing.textContent = `${parseFloat(inputLetterSpacing.value).toFixed(2)} em`
+    liveSpacingRender()
+  })
+  inputLineSpacing.addEventListener('input', () => {
+    labelLineSpacing.textContent = `${parseFloat(inputLineSpacing.value).toFixed(2)}×`
+    liveSpacingRender()
+  })
+
+  // Gradient preset + color overrides
+  const applyGradientFromForm = () => {
+    const preset = inputGradientPreset.value || DEFAULTS.gradient_preset
+    const a = inputGradColorAHex.value.trim() || null
+    const b = inputGradColorBHex.value.trim() || null
+    setGradientState(composeGradient(preset, a, b))
+  }
+  inputGradientPreset.addEventListener('change', () => {
+    applyGradientFromForm()
+    setPanelStatus('Preset applied · click Publish to save.', 'success')
+  })
+  const onGradColorChange = (picker, hexInput) => () => {
+    hexInput.value = picker.value.toUpperCase()
+    applyGradientFromForm()
+  }
+  const onGradHexChange = (picker, hexInput) => () => {
+    const v = (hexInput.value || '').trim()
+    if (v === '') { applyGradientFromForm(); return }
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) {
+      picker.value = v
+      applyGradientFromForm()
+    }
+  }
+  inputGradColorA.addEventListener('input', onGradColorChange(inputGradColorA, inputGradColorAHex))
+  inputGradColorAHex.addEventListener('input', onGradHexChange(inputGradColorA, inputGradColorAHex))
+  inputGradColorB.addEventListener('input', onGradColorChange(inputGradColorB, inputGradColorBHex))
+  inputGradColorBHex.addEventListener('input', onGradHexChange(inputGradColorB, inputGradColorBHex))
+  btnGradColorAClear.addEventListener('click', () => {
+    inputGradColorAHex.value = ''
+    applyGradientFromForm()
+  })
+  btnGradColorBClear.addEventListener('click', () => {
+    inputGradColorBHex.value = ''
+    applyGradientFromForm()
+  })
+
+  // Panel resizer — drag right edge to resize, persist width to localStorage
+  const applyPanelWidth = (px) => {
+    const w = Math.max(PANEL_WIDTH_MIN, Math.min(PANEL_WIDTH_MAX, Math.round(px)))
+    panel.style.width = `${w}px`
+    return w
+  }
+  // Restore saved width
+  try {
+    const saved = parseInt(localStorage.getItem(PANEL_WIDTH_KEY), 10)
+    if (Number.isFinite(saved)) applyPanelWidth(saved)
+  } catch (_) { /* */ }
+  let dragState = null
+  const onResizeMove = (e) => {
+    if (!dragState) return
+    const x = (e.touches ? e.touches[0].clientX : e.clientX)
+    const next = dragState.startWidth + (x - dragState.startX)
+    applyPanelWidth(next)
+  }
+  const onResizeEnd = () => {
+    if (!dragState) return
+    panel.classList.remove('is-resizing')
+    document.removeEventListener('mousemove', onResizeMove)
+    document.removeEventListener('mouseup', onResizeEnd)
+    document.removeEventListener('touchmove', onResizeMove)
+    document.removeEventListener('touchend', onResizeEnd)
+    try { localStorage.setItem(PANEL_WIDTH_KEY, String(panel.getBoundingClientRect().width)) } catch (_) { /* */ }
+    dragState = null
+  }
+  const onResizeStart = (e) => {
+    const x = (e.touches ? e.touches[0].clientX : e.clientX)
+    dragState = { startX: x, startWidth: panel.getBoundingClientRect().width }
+    panel.classList.add('is-resizing')
+    document.addEventListener('mousemove', onResizeMove)
+    document.addEventListener('mouseup', onResizeEnd)
+    document.addEventListener('touchmove', onResizeMove, { passive: true })
+    document.addEventListener('touchend', onResizeEnd)
+    e.preventDefault()
+  }
+  panelResizer.addEventListener('mousedown', onResizeStart)
+  panelResizer.addEventListener('touchstart', onResizeStart, { passive: false })
+  // Double-click to reset width
+  panelResizer.addEventListener('dblclick', () => {
+    applyPanelWidth(PANEL_WIDTH_DEFAULT)
+    try { localStorage.setItem(PANEL_WIDTH_KEY, String(PANEL_WIDTH_DEFAULT)) } catch (_) { /* */ }
+  })
+
   // accent picker sync
   inputAccentPicker.addEventListener('input', (e) => {
     const v = e.target.value
@@ -576,6 +736,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       try { logoTexture.reload(require('~assets/logo.png').default || require('~assets/logo.png')) } catch (_) { /* */ }
       try { text1Texture.reload(require('~assets/text-1.png').default || require('~assets/text-1.png')) } catch (_) { /* */ }
       try { text2Texture.reload(require('~assets/text-2.png').default || require('~assets/text-2.png')) } catch (_) { /* */ }
+      resetGradientState()
       fillFormFromSettings(saved)
       await applySettings(saved)
       setPanelStatus('All settings reset to defaults.', 'success')

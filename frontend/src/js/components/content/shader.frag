@@ -8,6 +8,16 @@ uniform sampler2D u_displacement;
 uniform sampler2D u_mask;
 uniform float u_tick;
 
+// Cube gradient colors — driven from JS gradient-state.js
+uniform vec3 u_g1c1;
+uniform vec3 u_g1c2;
+uniform vec3 u_g1c3;
+uniform vec3 u_g1c4;
+uniform vec3 u_g2c1;
+uniform vec3 u_g2c2;
+uniform vec3 u_g3c1;
+uniform vec3 u_g3c2;
+
 varying vec2 v_uv;
 
 const float PI2 = 6.283185307179586;
@@ -18,7 +28,7 @@ void main() {
   vec2 st = gl_FragCoord.xy / u_resolution;
 
   vec4 displacement = texture2D(u_displacement, st);
-  
+
   vec2 direction = vec2(cos(displacement.r * PI2), sin(displacement.r * PI2));
   float length = displacement.g;
 
@@ -30,7 +40,10 @@ void main() {
   vec4 texture = texture2D(u_texture, newUv);
   float tick = u_tick * 0.009;
 
-  vec3 color = gradients(u_typeId, v_uv, tick);
+  vec3 color = gradients(u_typeId, v_uv, tick,
+    u_g1c1, u_g1c2, u_g1c3, u_g1c4,
+    u_g2c1, u_g2c2,
+    u_g3c1, u_g3c2);
 
   texture.rgb = color + (texture.rgb * color);
 

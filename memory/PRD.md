@@ -43,6 +43,21 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 6 (May 2026) — Cube text spacing + gradient customization + resizable panel
+- **Letter spacing slider** (range -0.05 to 0.6 em, default 0.06) — modulates `ctx.letterSpacing` while rendering text-1 / text-2 textures; live-renders 80 ms after each input event
+- **Line spacing slider** (range 0.7× to 2.0×, default 1.05×) — multiplies the per-line height in the multi-line auto-fit pass; matters when Shift+Enter wraps the text
+- **Cube gradient customization** (1c + 2d):
+  - Eight curated **preset packs** in a dropdown: Original (rainbow), Sunset, Ocean, Mono White, Acid, Vaporwave, Noir, Forest
+  - Two **brand color overrides** (Color A + Color B) that re-tint gradient2 / gradient3 over any preset; each override has its own picker, hex input, and "×" button to clear back to the preset
+  - Implementation: rewrote `gradients.glsl` to take colors as parameters (no more hardcoded constants), added 8 `vec3` uniforms to the content fragment shader fed from a JS `gradientState` module mutated at runtime — zero shader recompiles
+  - Apply / preview / publish flow integrated with the existing settings system
+- **Resizable admin panel**:
+  - Right-edge drag handle (`admin-panel__resizer`) with pulsing accent grip on hover
+  - Range: 320 px (min) → 600 px (max)
+  - Width persisted to `localStorage` (`jax_admin_panel_width`) so it sticks across sessions
+  - Double-click the resizer to reset to the 380 px default
+  - Touch support for tablets
+
 ### Phase 5 (May 2026) — Font picker + multi-line cube text
 - Added a **font picker** to the cube-text section in the admin panel:
   - 8 display faces: Boldonse (default), Bricolage Grotesque, Big Shoulders Display, Archivo Black, Bebas Neue, Anton, Fraunces, Space Grotesk

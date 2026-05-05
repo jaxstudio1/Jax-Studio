@@ -181,6 +181,9 @@
           </div>
           <button type="button" class="admin-panel__close" data-testid="admin-panel-close" aria-label="Close panel">×</button>
         </header>
+        <div class="admin-panel__resizer" data-testid="admin-panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel">
+          <span class="admin-panel__resizer-grip" aria-hidden="true"></span>
+        </div>
 
         <div class="admin-panel__scroll">
           <section class="admin-section">
@@ -228,6 +231,52 @@
                 <span class="admin-font__preview" data-testid="admin-font-preview">Aa</span>
               </div>
             </label>
+            <div class="admin-slider">
+              <div class="admin-slider__row">
+                <span class="admin-slider__label">Letter spacing</span>
+                <span class="admin-slider__value" data-testid="admin-letter-spacing-value">0.06 em</span>
+              </div>
+              <input type="range" min="-0.05" max="0.6" step="0.01" value="0.06" data-testid="admin-letter-spacing" class="admin-slider__input" />
+            </div>
+            <div class="admin-slider">
+              <div class="admin-slider__row">
+                <span class="admin-slider__label">Line spacing</span>
+                <span class="admin-slider__value" data-testid="admin-line-spacing-value">1.05×</span>
+              </div>
+              <input type="range" min="0.7" max="2.0" step="0.01" value="1.05" data-testid="admin-line-spacing" class="admin-slider__input" />
+            </div>
+          </section>
+
+          <section class="admin-section">
+            <h3 class="admin-section__title">Cube gradient</h3>
+            <p class="admin-section__hint">Pick a preset · then fine-tune with two brand colors (optional)</p>
+            <label class="contact-form__field">
+              <span class="contact-form__label">Preset</span>
+              <select class="admin-font__select" data-testid="admin-gradient-preset">
+                <option value="default">Original — apple rainbow</option>
+                <option value="sunset">Sunset</option>
+                <option value="ocean">Ocean</option>
+                <option value="mono-white">Mono — white</option>
+                <option value="acid">Acid</option>
+                <option value="vaporwave">Vaporwave</option>
+                <option value="noir">Noir — punch of accent</option>
+                <option value="forest">Forest</option>
+              </select>
+            </label>
+            <div class="admin-grid-2">
+              <div class="admin-color admin-color--mini">
+                <span class="admin-slider__label admin-color__label">Color A</span>
+                <input type="color" data-testid="admin-gradient-color-a" value="#ec3424" />
+                <input type="text" data-testid="admin-gradient-color-a-hex" value="" placeholder="auto" maxlength="7" />
+                <button type="button" class="admin-color__clear" data-testid="admin-gradient-color-a-clear" title="Use preset color">×</button>
+              </div>
+              <div class="admin-color admin-color--mini">
+                <span class="admin-slider__label admin-color__label">Color B</span>
+                <input type="color" data-testid="admin-gradient-color-b" value="#e31fc8" />
+                <input type="text" data-testid="admin-gradient-color-b-hex" value="" placeholder="auto" maxlength="7" />
+                <button type="button" class="admin-color__clear" data-testid="admin-gradient-color-b-clear" title="Use preset color">×</button>
+              </div>
+            </div>
           </section>
 
           <section class="admin-section">

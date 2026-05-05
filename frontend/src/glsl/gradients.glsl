@@ -9,12 +9,7 @@ mat2 rotate2d(float value){
   return mat2(cos(value), -sin(value), sin(value), cos(value));
 }
 
-vec3 gradient1(vec2 st, float tick) {
-  vec3 c1 = vec3(0.98, 0.71, 0.0);
-  vec3 c2 = vec3(0.95, 0.20, 0.14);
-  vec3 c3 = vec3(0.89, 0.12, 0.78);
-  vec3 c4 = vec3(0.30, 0.24, 0.96);
-
+vec3 gradient1(vec2 st, float tick, vec3 c1, vec3 c2, vec3 c3, vec3 c4) {
   st.y = 1.0 - st.y;
 
   vec2 toCenter = vec2(0.55, 0.58) - st;
@@ -33,10 +28,7 @@ vec3 gradient1(vec2 st, float tick) {
   return mix(colorA, colorB, smoothstep(0.28, 0.65, st.x));
 }
 
-vec3 gradient2(vec2 st, float tick) {
-  vec3 c1 = vec3(1.0, 0.8, 0.2);
-  vec3 c2 = vec3(0.92, 0.20, 0.14);
-
+vec3 gradient2(vec2 st, float tick, vec3 c1, vec3 c2) {
   st -= vec2(0.5);
   st *= scale(vec2(3.8));
   st *= rotate2d(tick * PI);
@@ -45,10 +37,7 @@ vec3 gradient2(vec2 st, float tick) {
   return mix(c1, c2, st.x);
 }
 
-vec3 gradient3(vec2 st, float tick) {
-  vec3 c1 = vec3(0.89, 0.12, 0.78);
-  vec3 c2 = vec3(0.29, 0.68, 0.95);
-
+vec3 gradient3(vec2 st, float tick, vec3 c1, vec3 c2) {
   st -= vec2(0.5);
   st *= scale(vec2(3.8));
   st *= rotate2d(tick * PI);
@@ -57,14 +46,18 @@ vec3 gradient3(vec2 st, float tick) {
   return mix(c1, c2, st.x);
 }
 
-vec3 gradients(int type, vec2 st, float tick) {
+vec3 gradients(int type, vec2 st, float tick,
+               vec3 g1c1, vec3 g1c2, vec3 g1c3, vec3 g1c4,
+               vec3 g2c1, vec3 g2c2,
+               vec3 g3c1, vec3 g3c2) {
   if (type == 1) {
-    return gradient1(st, tick);
+    return gradient1(st, tick, g1c1, g1c2, g1c3, g1c4);
   } else if (type == 2) {
-    return gradient2(st, tick);
+    return gradient2(st, tick, g2c1, g2c2);
   } else if (type == 3) {
-    return gradient3(st, tick);
+    return gradient3(st, tick, g3c1, g3c2);
   }
+  return vec3(1.0);
 }
 
 #pragma glslify: export(gradients);

@@ -132,19 +132,28 @@ ALLOWED_CUBE_FONTS = {
     "Space Grotesk",
 }
 
+ALLOWED_GRADIENT_PRESETS = {
+    "default", "sunset", "ocean", "mono-white", "acid", "vaporwave", "noir", "forest",
+}
+
 
 class Settings(BaseModel):
     """Singleton site settings doc (id='main'). All fields optional → null = use default."""
     model_config = ConfigDict(extra="ignore")
-    logo_url: Optional[str] = None       # /api/uploads/<file> or null = bundled default
-    cube_text_1: Optional[str] = None    # default "COMING" (supports \n line breaks)
-    cube_text_2: Optional[str] = None    # default "SOON"   (supports \n line breaks)
-    cube_font: Optional[str] = None      # default "Boldonse"
-    brand_title: Optional[str] = None    # default "Jax Studio"
-    brand_tagline: Optional[str] = None  # default "Coming Soon"
-    welcome_heading: Optional[str] = None      # default "Jax Studio"
-    welcome_sub: Optional[str] = None          # default "Graphic Design · Portfolio & Studio"
-    accent_color: Optional[str] = None   # default #ff5722
+    logo_url: Optional[str] = None
+    cube_text_1: Optional[str] = None
+    cube_text_2: Optional[str] = None
+    cube_font: Optional[str] = None
+    cube_letter_spacing: Optional[float] = None    # em units, default 0.06
+    cube_line_spacing: Optional[float] = None      # multiplier, default 1.05
+    gradient_preset: Optional[str] = None          # default "default"
+    gradient_color_a: Optional[str] = None         # hex
+    gradient_color_b: Optional[str] = None         # hex
+    brand_title: Optional[str] = None
+    brand_tagline: Optional[str] = None
+    welcome_heading: Optional[str] = None
+    welcome_sub: Optional[str] = None
+    accent_color: Optional[str] = None
     updated_at: Optional[str] = None
 
 
@@ -153,13 +162,18 @@ class SettingsUpdate(BaseModel):
     cube_text_1: Optional[str] = Field(default=None, max_length=60)
     cube_text_2: Optional[str] = Field(default=None, max_length=60)
     cube_font: Optional[str] = Field(default=None, max_length=60)
+    cube_letter_spacing: Optional[float] = Field(default=None, ge=-0.05, le=0.6)
+    cube_line_spacing: Optional[float] = Field(default=None, ge=0.7, le=2.0)
+    gradient_preset: Optional[str] = Field(default=None, max_length=40)
+    gradient_color_a: Optional[str] = Field(default=None, max_length=9)
+    gradient_color_b: Optional[str] = Field(default=None, max_length=9)
     brand_title: Optional[str] = Field(default=None, max_length=80)
     brand_tagline: Optional[str] = Field(default=None, max_length=80)
     welcome_heading: Optional[str] = Field(default=None, max_length=80)
     welcome_sub: Optional[str] = Field(default=None, max_length=160)
     accent_color: Optional[str] = Field(default=None, max_length=9)
 
-    @field_validator('accent_color')
+    @field_validator('accent_color', 'gradient_color_a', 'gradient_color_b')
     @classmethod
     def _color(cls, v):
         return _validate_hex_color(v)
@@ -174,6 +188,18 @@ class SettingsUpdate(BaseModel):
             return None
         if v not in ALLOWED_CUBE_FONTS:
             raise ValueError(f"cube_font must be one of: {sorted(ALLOWED_CUBE_FONTS)}")
+        return v
+
+    @field_validator('gradient_preset')
+    @classmethod
+    def _preset(cls, v):
+        if v is None:
+            return None
+        v = v.strip()
+        if v == "":
+            return None
+        if v not in ALLOWED_GRADIENT_PRESETS:
+            raise ValueError(f"gradient_preset must be one of: {sorted(ALLOWED_GRADIENT_PRESETS)}")
         return v
 
 
@@ -494,6 +520,9 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
         {"$set": {
             "logo_url": None, "cube_text_1": None, "cube_text_2": None,
             "cube_font": None,
+            "cube_letter_spacing": None, "cube_line_spacing": None,
+            "gradient_preset": None,
+            "gradient_color_a": None, "gradient_color_b": None,
             "brand_title": None, "brand_tagline": None,
             "welcome_heading": None, "welcome_sub": None,
             "accent_color": None,

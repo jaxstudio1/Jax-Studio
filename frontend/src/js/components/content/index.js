@@ -8,6 +8,7 @@ import gui from '~js/helpers/gui'
 import {positions, uv, elements} from './config'
 import frag from './shader.frag'
 import vert from './shader.vert'
+import {gradientState} from '~js/gradient-state'
 
 const emptyTexture = regl.texture()
 
@@ -46,6 +47,14 @@ const draw = regl({
     u_texture: regl.prop('texture'),
     u_typeId: regl.prop('typeId'),
     u_maskId: regl.prop('maskId'),
+    u_g1c1: () => gradientState.g1c1,
+    u_g1c2: () => gradientState.g1c2,
+    u_g1c3: () => gradientState.g1c3,
+    u_g1c4: () => gradientState.g1c4,
+    u_g2c1: () => gradientState.g2c1,
+    u_g2c2: () => gradientState.g2c2,
+    u_g3c1: () => gradientState.g3c1,
+    u_g3c2: () => gradientState.g3c2,
   },
   depth: {
     enable: true,
