@@ -156,6 +156,7 @@ const enableOrientation = () => {
 if (isCoarsePointer) {
   const oneShotEnable = () => {
     enableOrientation()
+    enableMotion()
     window.removeEventListener('touchstart', oneShotEnable, true)
     window.removeEventListener('click', oneShotEnable, true)
   }
@@ -168,6 +169,66 @@ window.addEventListener('orientationchange', () => {
   orientation.baseGamma = null
   orientation.baseBeta = null
 })
+
+/**
+ * Device-motion shake-to-spin (mobile easter egg)
+ * Compute jitter from `accelerationIncludingGravity`. On a still device the
+ * delta between consecutive frames is tiny (~0.5). A real shake produces
+ * deltas well above 18 m/s². When that happens, kick `shakeBoost` up to a
+ * cap; otherwise it decays back to 1.0 each frame.
+ */
+const motion = {
+  enabled: false,
+  lastX: 0, lastY: 0, lastZ: 0,
+  hasLast: false,
+  // dynamic boost applied to the cube's velocity in animate()
+  boost: 1,
+  boostTarget: 1,
+  // tunables
+  threshold: 18,    // m/s² delta needed to register a shake tick
+  maxBoost: 7,      // cap multiplier (≈7× rotation speed during a vigorous shake)
+  decay: 0.92,      // how fast boost relaxes per ~16ms frame
+}
+
+const handleMotion = (event) => {
+  const a = event.accelerationIncludingGravity
+  if (!a || a.x == null || a.y == null || a.z == null) return
+  if (!motion.hasLast) {
+    motion.lastX = a.x; motion.lastY = a.y; motion.lastZ = a.z
+    motion.hasLast = true
+    return
+  }
+  const dx = a.x - motion.lastX
+  const dy = a.y - motion.lastY
+  const dz = a.z - motion.lastZ
+  motion.lastX = a.x; motion.lastY = a.y; motion.lastZ = a.z
+  const delta = Math.sqrt(dx * dx + dy * dy + dz * dz)
+  if (delta > motion.threshold) {
+    // map shake intensity (threshold..40) to (1..maxBoost), additive on top
+    const intensity = Math.min(1, (delta - motion.threshold) / 22)
+    const target = 1 + intensity * (motion.maxBoost - 1)
+    if (target > motion.boostTarget) motion.boostTarget = target
+  }
+}
+
+const enableMotion = () => {
+  if (motion.enabled) return
+  if (typeof window === 'undefined' || !('DeviceMotionEvent' in window)) return
+
+  const attach = () => {
+    window.addEventListener('devicemotion', handleMotion, true)
+    motion.enabled = true
+  }
+
+  const Req = window.DeviceMotionEvent && window.DeviceMotionEvent.requestPermission
+  if (typeof Req === 'function') {
+    Req()
+      .then((state) => { if (state === 'granted') attach() })
+      .catch(() => { /* denied → silently skip */ })
+  } else {
+    attach()
+  }
+}
 
 /**
  * Click → ripple + welcome overlay
@@ -404,8 +465,11 @@ const animate = ({viewportWidth, viewportHeight}) => {
   const cameraY = CONFIG.cameraY - pointer.smY * parallaxStrength
   const cameraZ = CONFIG.cameraZ
 
-  // Advance phase based on current speed multiplier
-  phase += CONFIG.velocity * speedMultiplier
+  // Advance phase based on current speed multiplier × shake boost
+  // boost decays toward boostTarget; boostTarget itself decays toward 1.
+  motion.boost = lerp(motion.boost, motion.boostTarget, 0.18)
+  motion.boostTarget = Math.max(1, motion.boostTarget * motion.decay)
+  phase += CONFIG.velocity * speedMultiplier * motion.boost
 
   /**
    * Resize Fbos
