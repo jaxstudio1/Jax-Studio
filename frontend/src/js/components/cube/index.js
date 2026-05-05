@@ -8,6 +8,7 @@ import gui from '~js/helpers/gui'
 import {positions, centers, uv, elements, colors} from './config'
 import frag from './shader.frag'
 import vert from './shader.vert'
+import {gradientState} from '~js/gradient-state'
 
 const emptyTexture = regl.texture()
 const emptyCube = regl.cube()
@@ -114,6 +115,11 @@ export default regl({
     u_displacementLength: regl.context('displacementLength'),
     u_reflectionOpacity: regl.context('reflectionOpacity'),
     u_scene: regl.context('scene'),
+    u_outline_a: () => gradientState.outline_a,
+    u_outline_b: () => gradientState.outline_b,
+    u_outline_c: () => gradientState.outline_c,
+    u_outline_d: () => gradientState.outline_d,
+    u_outline_e: () => gradientState.outline_e,
   },
   cull: {
     enable: true,

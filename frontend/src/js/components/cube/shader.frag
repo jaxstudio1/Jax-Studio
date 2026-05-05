@@ -11,6 +11,13 @@ uniform float u_displacementLength;
 uniform float u_reflectionOpacity;
 uniform int u_scene;
 
+// Outline (wireframe) gradient colors — driven from JS gradient-state.js
+uniform vec4 u_outline_a;
+uniform vec4 u_outline_b;
+uniform vec4 u_outline_c;
+uniform vec4 u_outline_d;
+uniform vec4 u_outline_e;
+
 varying vec3 v_normal;
 varying vec3 v_center;
 varying vec3 v_point;
@@ -54,7 +61,7 @@ vec4 type2() {
 vec4 type3() {
   vec2 st = gl_FragCoord.xy / u_resolution;
 
-  vec4 strokeColor = radialRainbow(st, u_tick);
+  vec4 strokeColor = radialRainbow(st, u_tick, u_outline_a, u_outline_b, u_outline_c, u_outline_d, u_outline_e);
   float depth = clamp(smoothstep(-1.0, 1.0, v_depth), 0.6, 0.9);
   vec4 stroke = strokeColor * vec4(borders(v_uv, u_borderWidth)) * depth;
 

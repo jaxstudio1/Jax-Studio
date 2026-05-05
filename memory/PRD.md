@@ -43,6 +43,18 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 7 (May 2026) — Cube outline gradient sync
+- The wireframe edges of the cube (drawn via `radialRainbow` in `radial-rainbow.glsl`) used to be **hardcoded** rainbow (blue/green/pink/red/yellow). They now respect the gradient state too:
+  - `radial-rainbow.glsl` rewritten to take 5 vec4 colors as parameters
+  - `cube/shader.frag` declares 5 new `u_outline_*` uniforms
+  - `cube/index.js` feeds them from `gradientState.outline_a..e`
+- Each preset in `gradient-state.js` now ships with a matching 5-stop outline derived from its own face palette (`presetWithOutline` helper)
+- **Color A / Color B overrides** also propagate into the outline:
+  - Color A → `outline_b`, `outline_d`
+  - Color B → `outline_a`, `outline_c`
+- Result: the cube feels cohesive across faces + edges. Mono White → white/grey edges, Vaporwave → pink/cyan edges, custom green+magenta override → green+magenta edges.
+- Verified visually with Ocean, Vaporwave, Mono White, and Acid + green/magenta override presets
+
 ### Phase 6 (May 2026) — Cube text spacing + gradient customization + resizable panel
 - **Letter spacing slider** (range -0.05 to 0.6 em, default 0.06) — modulates `ctx.letterSpacing` while rendering text-1 / text-2 textures; live-renders 80 ms after each input event
 - **Line spacing slider** (range 0.7× to 2.0×, default 1.05×) — multiplies the per-line height in the multi-line auto-fit pass; matters when Shift+Enter wraps the text
