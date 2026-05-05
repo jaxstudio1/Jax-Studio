@@ -91,7 +91,7 @@ stageEl.addEventListener('touchcancel', () => {
  */
 const overlay = document.querySelector('.welcome-overlay')
 const ripple = overlay.querySelector('.welcome-overlay__ripple')
-const closeBtn = overlay.querySelector('.welcome-overlay__close')
+const closeBtn = overlay.querySelector('[data-testid="welcome-close"]')
 const hintEl = document.querySelector('.hint')
 
 const triggerWelcome = (clientX, clientY) => {
@@ -143,8 +143,113 @@ closeBtn.addEventListener('click', (e) => {
   dismissWelcome()
 })
 
+/**
+ * Contact modal
+ */
+const contactModal = document.querySelector('.contact-modal')
+const contactBackdrop = contactModal.querySelector('.contact-modal__backdrop')
+const contactCloseBtn = contactModal.querySelector('.contact-modal__close')
+const contactForm = contactModal.querySelector('.contact-form')
+const contactSuccess = contactModal.querySelector('.contact-form__success')
+const contactStatus = contactModal.querySelector('.contact-form__status')
+const contactSubmitBtn = contactForm.querySelector('.contact-form__submit')
+const contactSubmitLabel = contactSubmitBtn.querySelector('.contact-form__submit-label')
+
+const openContact = () => {
+  contactModal.classList.add('is-active')
+  contactModal.setAttribute('aria-hidden', 'false')
+  // ensure form is visible (if previously success was shown)
+  contactForm.hidden = false
+  contactSuccess.hidden = true
+  setTimeout(() => {
+    const firstInput = contactForm.querySelector('input[name="name"]')
+    if (firstInput) firstInput.focus()
+  }, 300)
+}
+
+const closeContact = () => {
+  contactModal.classList.remove('is-active')
+  contactModal.setAttribute('aria-hidden', 'true')
+}
+
+document.querySelector('[data-testid="open-contact-btn"]').addEventListener('click', openContact)
+document.querySelector('[data-testid="welcome-contact-btn"]').addEventListener('click', () => {
+  dismissWelcome()
+  setTimeout(openContact, 200)
+})
+contactCloseBtn.addEventListener('click', closeContact)
+contactBackdrop.addEventListener('click', closeContact)
+contactModal.querySelector('[data-testid="contact-success-close"]').addEventListener('click', closeContact)
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') dismissWelcome()
+  if (e.key === 'Escape') {
+    if (contactModal.classList.contains('is-active')) {
+      closeContact()
+    } else {
+      dismissWelcome()
+    }
+  }
+})
+
+const API_BASE = (typeof window !== 'undefined' && window.__API_BASE__) || ''
+
+const apiUrl = (path) => {
+  // If REACT_APP_BACKEND_URL is set at build time we'd inject it, but for this
+  // vanilla setup we use same-origin relative routing — Kubernetes ingress
+  // routes `/api/*` to the backend on port 8001 automatically.
+  return path
+}
+
+contactForm.addEventListener('submit', async (e) => {
+  e.preventDefault()
+  contactStatus.textContent = ''
+  const fd = new FormData(contactForm)
+  const payload = {
+    name: (fd.get('name') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    message: (fd.get('message') || '').toString().trim(),
+    website: (fd.get('website') || '').toString(),
+  }
+
+  // Basic client-side validation
+  if (!payload.name || !payload.email || payload.message.length < 4) {
+    contactStatus.textContent = 'Please fill in all fields.'
+    return
+  }
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRe.test(payload.email)) {
+    contactStatus.textContent = 'Please enter a valid email.'
+    return
+  }
+
+  contactSubmitBtn.disabled = true
+  const originalLabel = contactSubmitLabel.textContent
+  contactSubmitLabel.textContent = 'Sending…'
+
+  try {
+    const res = await fetch(apiUrl('/api/contact'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      let detail = 'Something went wrong. Please try again.'
+      try {
+        const err = await res.json()
+        if (err && err.detail) detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
+      } catch (_) { /* ignore */ }
+      throw new Error(detail)
+    }
+    // Success
+    contactForm.reset()
+    contactForm.hidden = true
+    contactSuccess.hidden = false
+  } catch (err) {
+    contactStatus.textContent = err.message || 'Network error — please try again.'
+  } finally {
+    contactSubmitBtn.disabled = false
+    contactSubmitLabel.textContent = originalLabel
+  }
 })
 
 /**

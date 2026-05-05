@@ -3,13 +3,53 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>Jax Studio — Coming Soon</title>
-    <meta name="description" content="Jax Studio — Graphic Design portfolio. Coming soon." />
-    <meta name="keywords" content="jax studio, graphic design, portfolio, branding, coming soon" />
+    <title>Jax Studio — Graphic Design · Coming Soon</title>
+
+    <!-- SEO -->
+    <meta name="description" content="Jax Studio is a graphic design studio &amp; portfolio by Jax. Coming soon. Get in touch for project inquiries." />
+    <meta name="keywords" content="jax studio, graphic design, branding, portfolio, identity design, jaxstudio.ink" />
     <meta name="author" content="Jax Studio" />
-    <meta property="og:title" content="Jax Studio — Coming Soon" />
-    <meta property="og:description" content="Graphic Design portfolio launching soon." />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="canonical" href="https://jaxstudio.ink/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Jax Studio" />
+    <meta property="og:title" content="Jax Studio — Graphic Design · Coming Soon" />
+    <meta property="og:description" content="Graphic design studio &amp; portfolio launching soon. Get in touch for project inquiries." />
+    <meta property="og:url" content="https://jaxstudio.ink/" />
+    <meta property="og:image" content="og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Jax Studio — Coming Soon" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Jax Studio — Graphic Design · Coming Soon" />
+    <meta name="twitter:description" content="Graphic design studio &amp; portfolio launching soon." />
+    <meta name="twitter:image" content="og-image.png" />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Jax Studio",
+        "url": "https://jaxstudio.ink/",
+        "logo": "https://jaxstudio.ink/og-image.png",
+        "email": "hello@jaxstudio.ink",
+        "description": "Graphic design studio and portfolio by Jax.",
+        "sameAs": []
+      }
+    </script>
+
     <link rel="shortcut icon" href="favicon.ico" />
+
+    <!-- Display font: Boldonse (bold geometric display) + Archivo (utility) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
     <link rel="stylesheet" type="text/css" href="base.css" />
     <script>
       document.documentElement.className = "js"
@@ -19,19 +59,83 @@
     <main>
       <div class="frame" data-testid="frame">
         <h1 class="frame__title" data-testid="brand-title">Jax Studio</h1>
+        <button class="frame__contact-btn" type="button" data-testid="open-contact-btn" aria-label="Open contact form">
+          <span class="frame__contact-dot"></span>
+          Get in touch
+        </button>
         <div class="frame__tagline" data-testid="brand-tagline">Coming Soon</div>
       </div>
+
       <div class="content" data-testid="cube-stage"></div>
+
+      <div class="hint" data-testid="cube-hint">click the cube</div>
+
+      <!-- Welcome overlay (cube click) -->
       <div class="welcome-overlay" data-testid="welcome-overlay" aria-hidden="true">
         <div class="welcome-overlay__ripple" data-testid="welcome-ripple"></div>
         <div class="welcome-overlay__text" data-testid="welcome-text">
           <span class="welcome-overlay__greet">Welcome to</span>
           <span class="welcome-overlay__brand">Jax Studio<span class="welcome-overlay__bang">!</span></span>
-          <span class="welcome-overlay__sub">Graphic Design Portfolio</span>
-          <button class="welcome-overlay__close" data-testid="welcome-close" aria-label="Close welcome">Back</button>
+          <span class="welcome-overlay__sub">Graphic Design · Portfolio &amp; Studio</span>
+          <div class="welcome-overlay__actions">
+            <button class="btn btn--primary" type="button" data-testid="welcome-contact-btn">Start a project</button>
+            <button class="btn btn--ghost" type="button" data-testid="welcome-close">Back</button>
+          </div>
         </div>
       </div>
-      <div class="hint" data-testid="cube-hint">click the cube</div>
+
+      <!-- Contact modal -->
+      <div class="contact-modal" data-testid="contact-modal" aria-hidden="true">
+        <div class="contact-modal__backdrop" data-testid="contact-backdrop"></div>
+        <div class="contact-modal__panel" role="dialog" aria-modal="true" aria-labelledby="contact-title">
+          <button class="contact-modal__close" type="button" data-testid="contact-close" aria-label="Close">
+            <span aria-hidden="true">×</span>
+          </button>
+          <div class="contact-modal__eyebrow">Jax Studio · 01 / 01</div>
+          <h2 class="contact-modal__title" id="contact-title">Let&rsquo;s make<br/>something <em>good</em><span class="accent">.</span></h2>
+          <p class="contact-modal__sub">Tell me a little about your project. I reply within 24 hours.</p>
+
+          <form class="contact-form" data-testid="contact-form" novalidate>
+            <!-- honeypot -->
+            <div class="hp" aria-hidden="true">
+              <label>Website<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+            </div>
+
+            <div class="contact-form__row">
+              <label class="contact-form__field">
+                <span class="contact-form__label">Name</span>
+                <input type="text" name="name" required minlength="1" maxlength="120" autocomplete="name" data-testid="contact-name" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Email</span>
+                <input type="email" name="email" required autocomplete="email" data-testid="contact-email" />
+              </label>
+            </div>
+
+            <label class="contact-form__field">
+              <span class="contact-form__label">Project / Message</span>
+              <textarea name="message" rows="5" required minlength="4" maxlength="4000" data-testid="contact-message"></textarea>
+            </label>
+
+            <div class="contact-form__footer">
+              <button type="submit" class="btn btn--primary contact-form__submit" data-testid="contact-submit">
+                <span class="contact-form__submit-label">Send message</span>
+                <span class="contact-form__submit-arrow" aria-hidden="true">→</span>
+              </button>
+              <span class="contact-form__hint">Or email <a href="mailto:hello@jaxstudio.ink">hello@jaxstudio.ink</a></span>
+            </div>
+
+            <div class="contact-form__status" data-testid="contact-status" role="status" aria-live="polite"></div>
+          </form>
+
+          <div class="contact-form__success" data-testid="contact-success" hidden>
+            <div class="contact-form__success-mark">✓</div>
+            <h3>Message received<span class="accent">.</span></h3>
+            <p>Thanks — I&rsquo;ll get back to you within 24 hours. A copy is on its way to your inbox.</p>
+            <button type="button" class="btn btn--ghost" data-testid="contact-success-close">Close</button>
+          </div>
+        </div>
+      </div>
     </main>
   </body>
 </html>

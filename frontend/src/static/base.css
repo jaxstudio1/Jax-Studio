@@ -7,10 +7,16 @@
 :root {
   font-size: 15px;
   --color-text: #fff;
-  --color-bg: #000;
+  --color-bg: #0a0a0a;
   --color-link: #aaa;
   --color-link-hover: #fff;
   --accent: #ff5722;
+  --accent-soft: rgba(255, 87, 34, 0.18);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --display-font: 'Boldonse', 'Archivo Black', 'Arial Black', system-ui, sans-serif;
+  --ui-font: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono-font: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 html, body {
@@ -21,28 +27,24 @@ html, body {
   overflow: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-family: var(--ui-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 a {
   text-decoration: none;
   color: var(--color-link);
   outline: none;
+  transition: color 0.2s ease;
 }
 
-a:hover, a:focus {
-  color: var(--color-link-hover);
-}
+a:hover, a:focus { color: var(--color-link-hover); }
 
 /* hide dat.gui completely just in case */
-.dg.ac, .dg.main {
-  display: none !important;
-}
+.dg.ac, .dg.main { display: none !important; }
 
-/* Layout: full-bleed cube with absolutely positioned brand corners */
 main {
   position: relative;
   width: 100vw;
@@ -50,6 +52,7 @@ main {
   overflow: hidden;
 }
 
+/* -------- Frame (corner brand UI) -------- */
 .frame {
   position: fixed;
   top: 0; left: 0;
@@ -62,7 +65,7 @@ main {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
-    "title    ."
+    "title    contact"
     ".        ."
     ".        tagline";
 }
@@ -70,8 +73,9 @@ main {
 .frame__title {
   grid-area: title;
   margin: 0;
+  font-family: var(--ui-font);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: #fff;
@@ -81,12 +85,57 @@ main {
   grid-area: tagline;
   justify-self: end;
   align-self: end;
-  font-size: 0.85rem;
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: #888;
 }
 
+.frame__contact-btn {
+  grid-area: contact;
+  justify-self: end;
+  align-self: start;
+  pointer-events: auto;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: #eaeaea;
+  padding: 0.7rem 1.3rem 0.7rem 1.0rem;
+  border-radius: 999px;
+  font-family: var(--ui-font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+
+.frame__contact-btn:hover {
+  border-color: #fff;
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+  transform: translateY(-1px);
+}
+
+.frame__contact-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(255,87,34,0.6);
+  animation: pulse-dot 2.6s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,87,34, 0.65); }
+  50%      { box-shadow: 0 0 0 8px rgba(255,87,34, 0); }
+}
+
+/* -------- Cube stage -------- */
 .content {
   position: absolute;
   inset: 0;
@@ -105,14 +154,15 @@ main {
   height: 100% !important;
 }
 
-/* "click the cube" hint */
+/* -------- Hint -------- */
 .hint {
   position: fixed;
   bottom: 2.4rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  font-size: 0.7rem;
+  font-family: var(--mono-font);
+  font-size: 0.65rem;
   letter-spacing: 0.4em;
   text-transform: uppercase;
   color: #555;
@@ -125,7 +175,50 @@ main {
   50%      { opacity: 0.85; transform: translateX(-50%) translateY(-3px); }
 }
 
-/* Welcome overlay (ripple + reveal) */
+/* -------- Buttons -------- */
+.btn {
+  font-family: var(--ui-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0.95rem 1.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: #0a0a0a;
+  border-color: var(--accent);
+}
+
+.btn--primary:hover {
+  background: #ff7043;
+  border-color: #ff7043;
+  transform: translateY(-1px);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: #ccc;
+  border-color: var(--line-strong);
+}
+
+.btn--ghost:hover {
+  border-color: #fff;
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+}
+
+.accent { color: var(--accent); }
+
+/* -------- Welcome overlay (cube click) -------- */
 .welcome-overlay {
   position: fixed;
   inset: 0;
@@ -150,6 +243,8 @@ main {
   transform: translate(-50%, -50%) scale(0);
   transform-origin: center;
   opacity: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .welcome-overlay.is-active .welcome-overlay__ripple {
@@ -157,10 +252,10 @@ main {
 }
 
 @keyframes ripple-grow {
-  0%   { transform: translate(-50%, -50%) scale(0);  opacity: 0.0; background: #fff; }
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0;   background: #fff; }
   20%  { opacity: 0.95; background: #fff; }
-  60%  { opacity: 1;    background: #0a0a0a; }
-  100% { transform: translate(-50%, -50%) scale(220); opacity: 1; background: #0a0a0a; }
+  60%  { opacity: 1;    background: var(--color-bg); }
+  100% { transform: translate(-50%, -50%) scale(220); opacity: 1;   background: var(--color-bg); }
 }
 
 .welcome-overlay__text {
@@ -171,11 +266,12 @@ main {
   justify-content: center;
   align-items: center;
   text-align: center;
-  gap: 1.2rem;
+  gap: 1.0rem;
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s ease 0.85s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.85s;
   padding: 0 2rem;
+  z-index: 2;
 }
 
 .welcome-overlay.is-active .welcome-overlay__text {
@@ -184,60 +280,307 @@ main {
 }
 
 .welcome-overlay__greet {
-  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  font-family: var(--mono-font);
+  font-size: clamp(0.72rem, 1.2vw, 0.92rem);
   letter-spacing: 0.5em;
   text-transform: uppercase;
   color: #888;
 }
 
 .welcome-overlay__brand {
-  font-size: clamp(2.4rem, 9vw, 6rem);
-  font-weight: 700;
+  font-family: var(--display-font);
+  font-size: clamp(3rem, 11vw, 8rem);
+  font-weight: 400; /* Boldonse is already a single very-bold weight */
   letter-spacing: -0.02em;
+  line-height: 0.95;
   color: #fff;
   display: inline-flex;
   align-items: baseline;
   gap: 0.05em;
+  text-transform: uppercase;
 }
 
-.welcome-overlay__bang {
-  color: var(--accent);
-}
+.welcome-overlay__bang { color: var(--accent); }
 
 .welcome-overlay__sub {
-  font-size: clamp(0.8rem, 1.6vw, 1rem);
+  font-family: var(--mono-font);
+  font-size: clamp(0.7rem, 1.4vw, 0.9rem);
   letter-spacing: 0.4em;
   text-transform: uppercase;
   color: #aaa;
+  margin-top: 0.4rem;
 }
 
-.welcome-overlay__close {
-  margin-top: 2.2rem;
+.welcome-overlay__actions {
+  margin-top: 1.8rem;
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* -------- Contact modal -------- */
+.contact-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.contact-modal.is-active {
+  visibility: visible;
+  opacity: 1;
+}
+
+.contact-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.contact-modal__panel {
+  position: relative;
+  width: min(640px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background: #111;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 2.6rem 2.4rem 2.2rem;
+  transform: translateY(24px) scale(0.98);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,87,34,0.08) inset;
+}
+
+.contact-modal.is-active .contact-modal__panel {
+  transform: translateY(0) scale(1);
+}
+
+.contact-modal__close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   background: transparent;
-  border: 1px solid #444;
-  color: #ccc;
-  padding: 0.85rem 1.8rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.4em;
-  text-transform: uppercase;
+  border: 1px solid var(--line);
+  color: #aaa;
+  font-size: 1.3rem;
+  line-height: 0;
   cursor: pointer;
-  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
-  font-family: inherit;
 }
 
-.welcome-overlay__close:hover {
+.contact-modal__close:hover {
   border-color: #fff;
   color: #fff;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.04);
 }
 
-/* Mobile tweaks */
+.contact-modal__eyebrow {
+  font-family: var(--mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: #777;
+  margin-bottom: 1.2rem;
+}
+
+.contact-modal__title {
+  font-family: var(--display-font);
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0 0 0.9rem 0;
+  text-transform: uppercase;
+}
+
+.contact-modal__title em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.contact-modal__sub {
+  font-family: var(--ui-font);
+  font-size: 0.95rem;
+  color: #aaa;
+  margin: 0 0 1.8rem 0;
+  letter-spacing: 0.01em;
+}
+
+/* -------- Contact form -------- */
+.contact-form { display: flex; flex-direction: column; gap: 1.1rem; }
+.contact-form[hidden] { display: none; }
+.contact-form__success[hidden] { display: none; }
+
+.contact-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+}
+
+@media (max-width: 540px) {
+  .contact-form__row { grid-template-columns: 1fr; }
+}
+
+.contact-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.contact-form__label {
+  font-family: var(--mono-font);
+  font-size: 0.65rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.contact-form__field input,
+.contact-form__field textarea {
+  background: #0a0a0a;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.95rem 1rem;
+  color: #fff;
+  font-family: var(--ui-font);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  resize: vertical;
+  min-height: 0;
+}
+
+.contact-form__field textarea {
+  min-height: 130px;
+  font-family: var(--ui-font);
+  line-height: 1.55;
+}
+
+.contact-form__field input:focus,
+.contact-form__field textarea:focus {
+  border-color: var(--accent);
+  background: #0d0d0d;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.contact-form__field input::placeholder,
+.contact-form__field textarea::placeholder {
+  color: #555;
+}
+
+.contact-form__field input:invalid:not(:placeholder-shown),
+.contact-form__field textarea:invalid:not(:placeholder-shown) {
+  border-color: rgba(255,80,80,0.5);
+}
+
+.contact-form__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.contact-form__hint {
+  font-family: var(--mono-font);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: #777;
+}
+
+.contact-form__hint a { color: #ddd; border-bottom: 1px solid var(--line-strong); }
+.contact-form__hint a:hover { color: var(--accent); border-color: var(--accent); }
+
+.contact-form__submit { position: relative; min-width: 180px; justify-content: center; }
+.contact-form__submit[disabled] { opacity: 0.6; cursor: progress; }
+.contact-form__submit-arrow { transition: transform 0.25s ease; }
+.contact-form__submit:hover .contact-form__submit-arrow { transform: translateX(3px); }
+
+.contact-form__status {
+  font-family: var(--mono-font);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: #ff8a65;
+  min-height: 1em;
+}
+
+/* honeypot */
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Success state */
+.contact-form__success {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.contact-form__success-mark {
+  width: 64px;
+  height: 64px;
+  margin: 0.5rem auto 1.2rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  border: 1px solid var(--accent);
+  animation: pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.contact-form__success h3 {
+  font-family: var(--display-font);
+  font-size: 1.8rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  margin: 0 0 0.6rem 0;
+  color: #fff;
+}
+
+.contact-form__success p {
+  color: #aaa;
+  font-size: 0.95rem;
+  margin: 0 0 1.6rem 0;
+  line-height: 1.55;
+}
+
+/* -------- Mobile -------- */
 @media (max-width: 640px) {
-  .frame {
-    padding: 1.4rem 1.4rem;
-  }
-  .frame__title { font-size: 0.85rem; letter-spacing: 0.28em; }
-  .frame__tagline { font-size: 0.7rem; letter-spacing: 0.28em; }
-  .hint { bottom: 1.4rem; font-size: 0.62rem; letter-spacing: 0.32em; }
+  .frame { padding: 1.2rem 1.2rem; }
+  .frame__title { font-size: 0.78rem; letter-spacing: 0.28em; }
+  .frame__tagline { font-size: 0.62rem; letter-spacing: 0.28em; }
+  .frame__contact-btn { font-size: 0.62rem; padding: 0.55rem 0.95rem 0.55rem 0.75rem; letter-spacing: 0.22em; }
+  .hint { bottom: 1.4rem; font-size: 0.6rem; letter-spacing: 0.32em; }
+  .contact-modal__panel { padding: 2rem 1.4rem 1.6rem; border-radius: 14px; }
+  .contact-modal__title { font-size: 1.9rem; }
 }
