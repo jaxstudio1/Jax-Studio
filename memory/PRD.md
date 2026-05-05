@@ -39,6 +39,26 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - iOS 13+ permission gate: request triggered on the first user gesture (touch/click), fails silently if denied
   - Re-calibrates on `orientationchange` (portrait ↔ landscape)
   - Only auto-attaches on coarse-pointer devices (phones / tablets) — desktop unaffected
+- **Mobile shake-to-spin easter egg**:
+  - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
+  - Shares the same first-gesture permission flow as orientation
+
+### Phase 4 (May 2026) — Admin Control Panel
+- **Auth**: single shared admin password (bcrypt-hashed in `.env`), HS256 JWT (7-day expiry), in-memory IP brute-force limiter (5 / 15 min)
+- **Bottom-left "ADMIN" launcher pill** (with lock icon) → opens password modal → opens floating control panel that slides in from the left
+- **Customizable settings** (live preview + publish):
+  - Cube logo (PNG/SVG upload, max 4 MB, replaces previous file on disk)
+  - Cube text 1 + 2 (replaces "COMING" / "SOON" — rendered to canvas via Boldonse and pushed as live texture)
+  - Brand title (top-left) + tagline (bottom-right)
+  - Welcome overlay heading + sub-heading
+  - Accent color (color picker, hex input, 6 quick swatches)
+- **Preview**: applies form values locally without saving
+- **Publish**: PUT `/api/admin/settings`, persists for all visitors
+- **Reset to defaults**: clears DB doc, deletes uploaded logo file, restores bundled assets in cube
+- **Sign out**: clears JWT + closes panel
+- Public visitors get the customized settings via `GET /api/settings` on page load (logo_url, texts, colors, overlay copy all applied)
+- Texture helper rewritten to expose `.reload(urlOrCanvas)` for hot-swapping GPU textures without page reload
+- New logo files normalized to white-on-transparent on the client via offscreen canvas (so any PNG/SVG color works — shaders apply gradient on top)
 
 ### Phase 2 (May 2026) — Contact + SEO + Font
 - **Contact form**:

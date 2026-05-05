@@ -11,6 +11,7 @@ import camera from '~js/camera'
 import cube, {Types as CubeTypes, Faces as CubeFaces, Masks as CubeMasks} from '~js/components/cube'
 import content, {Types as ContentTypes} from '~js/components/content'
 import reflection from '~js/components/reflection'
+import {initAdmin} from '~js/admin'
 
 import '~css/main.css'
 
@@ -406,33 +407,19 @@ const reflectionFbo = regl.framebufferCube(1024)
 
 /**
  * Textures
+ * Logo texture is shared across the 3 logo faces (single GPU resource, reloads
+ * cheaply). text-1 and text-2 each have their own.
  */
+const logoTexture = Texture(regl, 'logo.png')
+const text1Texture = Texture(regl, 'text-1.png')
+const text2Texture = Texture(regl, 'text-2.png')
+
 const textures = [
-  {
-    texture: Texture(regl, 'logo.png'),
-    typeId: ContentTypes.RAINBOW,
-    maskId: CubeMasks.M1,
-  },
-  {
-    texture: Texture(regl, 'logo.png'),
-    typeId: ContentTypes.BLUE,
-    maskId: CubeMasks.M2,
-  },
-  {
-    texture: Texture(regl, 'logo.png'),
-    typeId: ContentTypes.RED,
-    maskId: CubeMasks.M3,
-  },
-  {
-    texture: Texture(regl, 'text-1.png'),
-    typeId: ContentTypes.BLUE,
-    maskId: CubeMasks.M4,
-  },
-  {
-    texture: Texture(regl, 'text-2.png'),
-    typeId: ContentTypes.RED,
-    maskId: CubeMasks.M5,
-  },
+  { texture: logoTexture,  typeId: ContentTypes.RAINBOW, maskId: CubeMasks.M1 },
+  { texture: logoTexture,  typeId: ContentTypes.BLUE,    maskId: CubeMasks.M2 },
+  { texture: logoTexture,  typeId: ContentTypes.RED,     maskId: CubeMasks.M3 },
+  { texture: text1Texture, typeId: ContentTypes.BLUE,    maskId: CubeMasks.M4 },
+  { texture: text2Texture, typeId: ContentTypes.RED,     maskId: CubeMasks.M5 },
 ]
 
 /**
@@ -557,6 +544,9 @@ const animate = ({viewportWidth, viewportHeight}) => {
 
 const init = () => {
   play(animate)
+  // Admin panel — login, settings, live preview, publish.
+  // Receives our shared GPU textures so admin edits hot-swap them in place.
+  initAdmin({ logoTexture, text1Texture, text2Texture })
 }
 
 init()

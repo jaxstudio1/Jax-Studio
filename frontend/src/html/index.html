@@ -70,6 +70,14 @@
 
       <div class="hint" data-testid="cube-hint">click the cube</div>
 
+      <!-- Admin login button (bottom-left) -->
+      <button class="admin-launcher" type="button" data-testid="admin-launcher" aria-label="Open admin login">
+        <span class="admin-launcher__icon" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </span>
+        <span class="admin-launcher__label">Admin</span>
+      </button>
+
       <!-- Welcome overlay (cube click) -->
       <div class="welcome-overlay" data-testid="welcome-overlay" aria-hidden="true">
         <div class="welcome-overlay__ripple" data-testid="welcome-ripple"></div>
@@ -136,6 +144,134 @@
           </div>
         </div>
       </div>
+
+      <!-- Admin login modal (password gate) -->
+      <div class="admin-login" data-testid="admin-login-modal" aria-hidden="true">
+        <div class="admin-login__backdrop" data-testid="admin-login-backdrop"></div>
+        <div class="admin-login__panel" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+          <button class="contact-modal__close" type="button" data-testid="admin-login-close" aria-label="Close">
+            <span aria-hidden="true">×</span>
+          </button>
+          <div class="contact-modal__eyebrow">Jax Studio · Admin</div>
+          <h2 class="contact-modal__title" id="admin-login-title">Sign in<span class="accent">.</span></h2>
+          <p class="contact-modal__sub">Enter the admin password to customize the cube.</p>
+          <form class="admin-login__form" data-testid="admin-login-form" novalidate>
+            <label class="contact-form__field">
+              <span class="contact-form__label">Password</span>
+              <input type="password" name="password" autocomplete="current-password" required data-testid="admin-password" />
+            </label>
+            <div class="contact-form__footer">
+              <button type="submit" class="btn btn--primary" data-testid="admin-login-submit">
+                <span>Sign in</span>
+                <span class="contact-form__submit-arrow" aria-hidden="true">→</span>
+              </button>
+              <span class="contact-form__hint">7-day session · device only</span>
+            </div>
+            <div class="contact-form__status" data-testid="admin-login-status" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Admin control panel (slides in from left after login) -->
+      <aside class="admin-panel" data-testid="admin-panel" aria-hidden="true">
+        <header class="admin-panel__header">
+          <div class="admin-panel__brand">
+            <span class="admin-panel__dot"></span>
+            <span class="admin-panel__title">Control Panel</span>
+          </div>
+          <button type="button" class="admin-panel__close" data-testid="admin-panel-close" aria-label="Close panel">×</button>
+        </header>
+
+        <div class="admin-panel__scroll">
+          <section class="admin-section">
+            <h3 class="admin-section__title">Cube logo</h3>
+            <p class="admin-section__hint">PNG or SVG · max 4 MB · transparent bg recommended</p>
+            <label class="admin-upload" data-testid="admin-upload-label">
+              <input type="file" accept=".png,.svg,image/png,image/svg+xml" data-testid="admin-upload-input" hidden />
+              <span class="admin-upload__icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </span>
+              <span class="admin-upload__copy">
+                <span class="admin-upload__title" data-testid="admin-upload-title">Click to upload</span>
+                <span class="admin-upload__sub" data-testid="admin-upload-sub">Replaces previous file on the server</span>
+              </span>
+            </label>
+            <div class="admin-upload__progress" data-testid="admin-upload-progress" hidden></div>
+          </section>
+
+          <section class="admin-section">
+            <h3 class="admin-section__title">Cube text</h3>
+            <div class="admin-grid-2">
+              <label class="contact-form__field">
+                <span class="contact-form__label">Word 1</span>
+                <input type="text" maxlength="14" data-testid="admin-cube-text-1" placeholder="COMING" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Word 2</span>
+                <input type="text" maxlength="14" data-testid="admin-cube-text-2" placeholder="SOON" />
+              </label>
+            </div>
+          </section>
+
+          <section class="admin-section">
+            <h3 class="admin-section__title">Brand</h3>
+            <div class="admin-grid-2">
+              <label class="contact-form__field">
+                <span class="contact-form__label">Top-left title</span>
+                <input type="text" maxlength="60" data-testid="admin-brand-title" placeholder="Jax Studio" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Bottom-right tagline</span>
+                <input type="text" maxlength="60" data-testid="admin-brand-tagline" placeholder="Coming Soon" />
+              </label>
+            </div>
+          </section>
+
+          <section class="admin-section">
+            <h3 class="admin-section__title">Welcome overlay</h3>
+            <label class="contact-form__field">
+              <span class="contact-form__label">Heading</span>
+              <input type="text" maxlength="60" data-testid="admin-welcome-heading" placeholder="Jax Studio" />
+            </label>
+            <label class="contact-form__field">
+              <span class="contact-form__label">Sub-heading</span>
+              <input type="text" maxlength="120" data-testid="admin-welcome-sub" placeholder="Graphic Design · Portfolio &amp; Studio" />
+            </label>
+          </section>
+
+          <section class="admin-section">
+            <h3 class="admin-section__title">Accent color</h3>
+            <p class="admin-section__hint">Used for &ldquo;!&rdquo; accents, primary button, focus ring</p>
+            <div class="admin-color">
+              <input type="color" data-testid="admin-accent-picker" value="#ff5722" />
+              <input type="text" data-testid="admin-accent-hex" value="#ff5722" maxlength="7" />
+              <div class="admin-color__swatches">
+                <button type="button" class="admin-color__swatch" data-color="#ff5722" style="--c:#ff5722" aria-label="Orange"></button>
+                <button type="button" class="admin-color__swatch" data-color="#22d3ee" style="--c:#22d3ee" aria-label="Cyan"></button>
+                <button type="button" class="admin-color__swatch" data-color="#a855f7" style="--c:#a855f7" aria-label="Purple"></button>
+                <button type="button" class="admin-color__swatch" data-color="#22c55e" style="--c:#22c55e" aria-label="Green"></button>
+                <button type="button" class="admin-color__swatch" data-color="#f43f5e" style="--c:#f43f5e" aria-label="Red"></button>
+                <button type="button" class="admin-color__swatch" data-color="#facc15" style="--c:#facc15" aria-label="Yellow"></button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <footer class="admin-panel__footer">
+          <div class="admin-panel__row">
+            <button type="button" class="btn btn--ghost admin-panel__btn" data-testid="admin-preview-btn">Preview</button>
+            <button type="button" class="btn btn--primary admin-panel__btn" data-testid="admin-publish-btn">
+              <span>Publish</span>
+              <span class="contact-form__submit-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+          <div class="admin-panel__row admin-panel__row--secondary">
+            <button type="button" class="admin-panel__link" data-testid="admin-reset-btn">Reset to defaults</button>
+            <button type="button" class="admin-panel__link" data-testid="admin-logout-btn">Sign out</button>
+          </div>
+          <div class="admin-panel__status" data-testid="admin-panel-status" role="status" aria-live="polite"></div>
+        </footer>
+      </aside>
     </main>
   </body>
 </html>
