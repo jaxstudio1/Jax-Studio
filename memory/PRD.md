@@ -43,6 +43,30 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 8 (May 2026) — Standalone reusable template at `/app/template/`
+- Created a complete, standalone, brand-neutral copy of the codebase at `/app/template/` (frontend + backend + README)
+- **Stripped Jax-specific defaults** throughout:
+  - Brand: Jax Studio → "Studio Name", `jaxstudio.ink` → `template.test`
+  - Generic placeholder logo (rounded-square mark) and "COMING" / "SOON" text textures
+  - Generic 1200×630 OG image
+  - Empty SendGrid creds in `.env` (with placeholder sender + owner emails)
+  - Default admin password = `template2026` (with bcrypt hash in `.env`); placeholder `JWT_SECRET` flagged for replacement
+  - Removed welcome-overlay / ripple HTML, CSS, and JS from `index.html`, `base.css`, `index.js`, `admin.js`
+  - Removed `welcome_heading` / `welcome_sub` fields from `Settings`, `SettingsUpdate`, reset endpoint, and admin DEFAULTS
+- **Cube click → curtain lift reveal** of a behind-page placeholder site:
+  - `.landing-curtain` is `position: fixed; z-index: 60`
+  - On click → adds `.is-revealed` (fade + scale 1.08 + 6 px blur over 0.9 s) → removes `body.is-locked` to unlock scrolling
+  - Behind-page sections: hero with display title + lede + CTAs, 6-card work grid (each card is a `linear-gradient` between two CSS-variable colors per project), 4-row services list, about prose, contact CTA, footer with "← back to intro" button that re-locks the curtain
+- **Build verified** — production webpack build succeeds cleanly, output served via `python -m http.server` returns 200 for `/`, `/main.js`, `/og-image.png`, and HTML contains all Studio Name placeholders + behind-site sections
+- **README.md** at `/app/template/README.md` documenting:
+  - Full feature list and file layout
+  - Step-by-step quick-start: copy → backend setup → frontend setup
+  - One-liner snippets for generating fresh `JWT_SECRET` + `ADMIN_PASSWORD_HASH`
+  - Per-client customization checklist (branding via admin panel, behind-site copy edits, SEO/OG, SendGrid)
+  - How the curtain-reveal works + where to edit it
+  - Full API surface
+  - Production checklist
+
 ### Phase 7 (May 2026) — Cube outline gradient sync
 - The wireframe edges of the cube (drawn via `radialRainbow` in `radial-rainbow.glsl`) used to be **hardcoded** rainbow (blue/green/pink/red/yellow). They now respect the gradient state too:
   - `radial-rainbow.glsl` rewritten to take 5 vec4 colors as parameters

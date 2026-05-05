@@ -1,0 +1,750 @@
+/**
+ * Jax Studio — admin control panel
+ * Login / settings / live preview & publish.
+ */
+
+import {
+  setGradientState,
+  resetGradientState,
+  composeGradient,
+  GRADIENT_PRESETS,
+} from '~js/gradient-state'
+
+const STORAGE_KEY = 'jax_admin_token'
+const PANEL_WIDTH_KEY = 'jax_admin_panel_width'
+const DEFAULTS = {
+  cube_text_1: 'COMING',
+  cube_text_2: 'SOON',
+  cube_font: 'Boldonse',
+  cube_letter_spacing: 0.06,
+  cube_line_spacing: 1.05,
+  gradient_preset: 'default',
+  gradient_color_a: null,
+  gradient_color_b: null,
+  brand_title: 'Studio Name',
+  brand_tagline: 'Coming Soon',
+  accent_color: '#ff5722',
+}
+
+const PANEL_WIDTH_MIN = 320
+const PANEL_WIDTH_MAX = 600
+const PANEL_WIDTH_DEFAULT = 380
+
+// Display fonts available in the admin font picker. The link tag in index.html
+// preloads all of them via Google Fonts so canvas drawing can use them
+// after a single document.fonts.load() call below.
+const FONT_OPTIONS = [
+  { id: 'Boldonse',              weight: 400 },
+  { id: 'Bricolage Grotesque',   weight: 800 },
+  { id: 'Big Shoulders Display', weight: 900 },
+  { id: 'Archivo Black',         weight: 400 },
+  { id: 'Bebas Neue',            weight: 400 },
+  { id: 'Anton',                 weight: 400 },
+  { id: 'Fraunces',              weight: 800 },
+  { id: 'Space Grotesk',         weight: 700 },
+]
+
+const fontMeta = (family) => FONT_OPTIONS.find((f) => f.id === family) || FONT_OPTIONS[0]
+
+// ---------- helpers ----------
+const $ = (sel, root = document) => root.querySelector(sel)
+
+const apiUrl = (path) => path  // same-origin via ingress
+
+const apiFetch = async (path, options = {}, token = null) => {
+  const headers = Object.assign({}, options.headers || {})
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json'
+  }
+  const res = await fetch(apiUrl(path), { ...options, headers })
+  const ct = res.headers.get('content-type') || ''
+  const data = ct.includes('application/json') ? await res.json() : await res.text()
+  if (!res.ok) {
+    const detail = (data && data.detail) || (typeof data === 'string' ? data : 'Request failed')
+    const message = Array.isArray(detail)
+      ? detail.map((d) => d && d.msg ? d.msg : JSON.stringify(d)).join(' ')
+      : String(detail)
+    throw new Error(message)
+  }
+  return data
+}
+
+const loadImage = (src) => new Promise((resolve, reject) => {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => resolve(img)
+  img.onerror = (e) => reject(e)
+  img.src = src
+})
+
+const adjustAccentSoft = (hex) => {
+  const h = hex.replace('#', '')
+  const v = h.length === 3
+    ? h.split('').map((c) => c + c).join('')
+    : h
+  const r = parseInt(v.slice(0, 2), 16)
+  const g = parseInt(v.slice(2, 4), 16)
+  const b = parseInt(v.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, 0.18)`
+}
+
+/**
+ * Build a 1024×1024 white-on-transparent canvas from any image URL or data URL.
+ * Works for PNGs (any color) and SVGs (any color). The cube shaders apply
+ * gradient color on top, so the texture only needs to act as an alpha mask.
+ */
+const buildLogoCanvas = async (url, size = 1024) => {
+  const img = await loadImage(url)
+  const w = img.naturalWidth || size
+  const h = img.naturalHeight || size
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  // Contain + 85% scale for breathing room
+  const scale = Math.min(size / w, size / h) * 0.86
+  const drawW = Math.max(1, w * scale)
+  const drawH = Math.max(1, h * scale)
+  const x = (size - drawW) / 2
+  const y = (size - drawH) / 2
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, x, y, drawW, drawH)
+  // Force RGB → white wherever alpha > 0
+  try {
+    const data = ctx.getImageData(0, 0, size, size)
+    const arr = data.data
+    for (let i = 0; i < arr.length; i += 4) {
+      if (arr[i + 3] > 0) {
+        arr[i] = 255; arr[i + 1] = 255; arr[i + 2] = 255
+      }
+    }
+    ctx.putImageData(data, 0, 0)
+  } catch (err) {
+    // Cross-origin canvases can't getImageData. Server-side images are same-origin,
+    // so this should never fire; just log if it does.
+    // eslint-disable-next-line no-console
+    console.warn('Could not recolor logo canvas:', err)
+  }
+  return canvas
+}
+
+/**
+ * Ensure a Google Font is available on the canvas before drawing text with it.
+ * The <link> tag in index.html preloads the *.css and the woff2 files, but the
+ * browser only fetches the actual font binary lazily — so we explicitly call
+ * document.fonts.load() to wait for it.
+ */
+const ensureFontLoaded = async (family, weight = 700) => {
+  if (!document.fonts || !document.fonts.load) return
+  try {
+    // Trigger load at multiple sizes so that any subsequent measureText call
+    // doesn't fall back to the system font.
+    await document.fonts.load(`${weight} 200px "${family}"`)
+    await document.fonts.load(`${weight} 100px "${family}"`)
+    await document.fonts.ready
+  } catch (_) { /* font may not exist; canvas will fall back gracefully */ }
+}
+
+/**
+ * Render multi-line text to a 1024×1024 white-on-transparent canvas.
+ * Lines are split on \n. Font size is auto-fitted so the widest line stays
+ * within ~88% of the canvas and the stack height stays within ~80%.
+ */
+const buildTextCanvas = (rawText, family = DEFAULTS.cube_font, opts = {}, size = 1024) => {
+  const meta = fontMeta(family)
+  const text = String(rawText == null ? '' : rawText)
+  const letterSpacingEm = typeof opts.letterSpacing === 'number' ? opts.letterSpacing : DEFAULTS.cube_letter_spacing
+  const lineHeightFactor = typeof opts.lineSpacing === 'number' ? opts.lineSpacing : DEFAULTS.cube_line_spacing
+
+  const lines = text
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .slice(0, 4)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  if (lines.length === 0) return canvas
+
+  const safeW = size * 0.88
+  const safeH = size * 0.84
+  const fontWeight = meta.weight
+
+  // Auto-fit
+  let fontSize = 480
+  while (fontSize > 60) {
+    ctx.font = `${fontWeight} ${fontSize}px "${family}", "Archivo Black", sans-serif`
+    if ('letterSpacing' in ctx) {
+      try { ctx.letterSpacing = `${(letterSpacingEm * fontSize).toFixed(2)}px` } catch (_) { /* */ }
+    }
+    const widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0)
+    const totalH = lines.length * fontSize * lineHeightFactor
+    if (widest <= safeW && totalH <= safeH) break
+    fontSize -= 16
+  }
+  ctx.font = `${fontWeight} ${fontSize}px "${family}", "Archivo Black", sans-serif`
+  if ('letterSpacing' in ctx) {
+    try { ctx.letterSpacing = `${(letterSpacingEm * fontSize).toFixed(2)}px` } catch (_) { /* */ }
+  }
+
+  const lineH = fontSize * lineHeightFactor
+  const stackH = lines.length * lineH
+  const startY = (size - stackH) / 2 + lineH / 2
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], size / 2, startY + i * lineH)
+  }
+  return canvas
+}
+
+// ---------- main module ----------
+export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
+  // ----- DOM refs -----
+  const launcher = $('[data-testid="admin-launcher"]')
+  const loginModal = $('[data-testid="admin-login-modal"]')
+  const loginBackdrop = $('[data-testid="admin-login-backdrop"]')
+  const loginCloseBtn = $('[data-testid="admin-login-close"]')
+  const loginForm = $('[data-testid="admin-login-form"]')
+  const loginInput = $('[data-testid="admin-password"]')
+  const loginStatus = $('[data-testid="admin-login-status"]')
+  const loginSubmit = $('[data-testid="admin-login-submit"]')
+
+  const panel = $('[data-testid="admin-panel"]')
+  const panelClose = $('[data-testid="admin-panel-close"]')
+  const panelResizer = $('[data-testid="admin-panel-resizer"]')
+  const inputCubeText1 = $('[data-testid="admin-cube-text-1"]')
+  const inputCubeText2 = $('[data-testid="admin-cube-text-2"]')
+  const inputCubeFont = $('[data-testid="admin-cube-font"]')
+  const fontPreviewEl = $('[data-testid="admin-font-preview"]')
+  const inputLetterSpacing = $('[data-testid="admin-letter-spacing"]')
+  const labelLetterSpacing = $('[data-testid="admin-letter-spacing-value"]')
+  const inputLineSpacing = $('[data-testid="admin-line-spacing"]')
+  const labelLineSpacing = $('[data-testid="admin-line-spacing-value"]')
+  const inputGradientPreset = $('[data-testid="admin-gradient-preset"]')
+  const inputGradColorA = $('[data-testid="admin-gradient-color-a"]')
+  const inputGradColorAHex = $('[data-testid="admin-gradient-color-a-hex"]')
+  const btnGradColorAClear = $('[data-testid="admin-gradient-color-a-clear"]')
+  const inputGradColorB = $('[data-testid="admin-gradient-color-b"]')
+  const inputGradColorBHex = $('[data-testid="admin-gradient-color-b-hex"]')
+  const btnGradColorBClear = $('[data-testid="admin-gradient-color-b-clear"]')
+  const inputBrandTitle = $('[data-testid="admin-brand-title"]')
+  const inputBrandTagline = $('[data-testid="admin-brand-tagline"]')
+  const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
+  const inputAccentHex = $('[data-testid="admin-accent-hex"]')
+  const swatches = panel.querySelectorAll('.admin-color__swatch')
+  const uploadInput = $('[data-testid="admin-upload-input"]')
+  const uploadLabel = $('[data-testid="admin-upload-label"]')
+  const uploadTitle = $('[data-testid="admin-upload-title"]')
+  const uploadSub = $('[data-testid="admin-upload-sub"]')
+  const uploadProgress = $('[data-testid="admin-upload-progress"]')
+  const previewBtn = $('[data-testid="admin-preview-btn"]')
+  const publishBtn = $('[data-testid="admin-publish-btn"]')
+  const resetBtn = $('[data-testid="admin-reset-btn"]')
+  const logoutBtn = $('[data-testid="admin-logout-btn"]')
+  const panelStatus = $('[data-testid="admin-panel-status"]')
+
+  const brandTitleEl = $('[data-testid="brand-title"]')
+  const brandTaglineEl = $('[data-testid="brand-tagline"]')
+
+  // ----- state -----
+  let token = (() => {
+    try { return localStorage.getItem(STORAGE_KEY) } catch (_) { return null }
+  })()
+  let published = {}      // last fetched server settings
+  let pendingLogoUrl = null  // not yet published
+
+  // ----- UI helpers -----
+  const setPanelStatus = (text, kind = '') => {
+    panelStatus.textContent = text || ''
+    panelStatus.classList.remove('is-error', 'is-success')
+    if (kind) panelStatus.classList.add(`is-${kind}`)
+  }
+
+  const setLoginStatus = (text) => { loginStatus.textContent = text || '' }
+
+  const openLogin = () => {
+    loginModal.classList.add('is-active')
+    loginModal.setAttribute('aria-hidden', 'false')
+    setLoginStatus('')
+    setTimeout(() => loginInput && loginInput.focus(), 250)
+  }
+
+  const closeLogin = () => {
+    loginModal.classList.remove('is-active')
+    loginModal.setAttribute('aria-hidden', 'true')
+  }
+
+  const openPanel = () => {
+    panel.classList.add('is-active')
+    panel.setAttribute('aria-hidden', 'false')
+  }
+  const closePanel = () => {
+    panel.classList.remove('is-active')
+    panel.setAttribute('aria-hidden', 'true')
+  }
+
+  // ----- apply settings to UI + textures -----
+  const applyAccent = (hex) => {
+    document.documentElement.style.setProperty('--accent', hex)
+    document.documentElement.style.setProperty('--accent-soft', adjustAccentSoft(hex))
+    inputAccentPicker.value = hex
+    inputAccentHex.value = hex.toUpperCase()
+  }
+
+  const applyTextDOM = (s) => {
+    brandTitleEl.textContent = s.brand_title || DEFAULTS.brand_title
+    brandTaglineEl.textContent = s.brand_tagline || DEFAULTS.brand_tagline
+  }
+
+  const applyCubeTextures = async (s) => {
+    // Cube text labels — multi-line aware, with letter & line spacing
+    const family = s.cube_font || DEFAULTS.cube_font
+    const ls = (typeof s.cube_letter_spacing === 'number') ? s.cube_letter_spacing : DEFAULTS.cube_letter_spacing
+    const lh = (typeof s.cube_line_spacing === 'number') ? s.cube_line_spacing : DEFAULTS.cube_line_spacing
+    const opts = { letterSpacing: ls, lineSpacing: lh }
+    await ensureFontLoaded(family, fontMeta(family).weight)
+    const t1 = (s.cube_text_1 || '').trim()
+    const t2 = (s.cube_text_2 || '').trim()
+    if (t1) {
+      try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family, opts)) } catch (e) { /* */ }
+    }
+    if (t2) {
+      try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family, opts)) } catch (e) { /* */ }
+    }
+    if (!t1 && (s.cube_font || ls !== DEFAULTS.cube_letter_spacing || lh !== DEFAULTS.cube_line_spacing)) {
+      try { text1Texture.reload(buildTextCanvas(DEFAULTS.cube_text_1, family, opts)) } catch (e) { /* */ }
+    }
+    if (!t2 && (s.cube_font || ls !== DEFAULTS.cube_letter_spacing || lh !== DEFAULTS.cube_line_spacing)) {
+      try { text2Texture.reload(buildTextCanvas(DEFAULTS.cube_text_2, family, opts)) } catch (e) { /* */ }
+    }
+    // Logo
+    if (s.logo_url) {
+      try {
+        const canvas = await buildLogoCanvas(s.logo_url)
+        logoTexture.reload(canvas)
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Logo apply failed', err)
+      }
+    }
+  }
+
+  const applyGradient = (s) => {
+    const preset = s.gradient_preset || DEFAULTS.gradient_preset
+    const colors = composeGradient(preset, s.gradient_color_a, s.gradient_color_b)
+    setGradientState(colors)
+  }
+
+  const applySettings = async (s) => {
+    applyAccent(s.accent_color || DEFAULTS.accent_color)
+    applyGradient(s)
+    applyTextDOM(s)
+    await applyCubeTextures(s)
+  }
+
+  const fillFormFromSettings = (s) => {
+    inputCubeText1.value = s.cube_text_1 || ''
+    inputCubeText2.value = s.cube_text_2 || ''
+    inputCubeFont.value = s.cube_font || DEFAULTS.cube_font
+    if (fontPreviewEl) {
+      fontPreviewEl.style.fontFamily = `"${inputCubeFont.value}", sans-serif`
+      fontPreviewEl.style.fontWeight = String(fontMeta(inputCubeFont.value).weight)
+    }
+    const ls = (typeof s.cube_letter_spacing === 'number') ? s.cube_letter_spacing : DEFAULTS.cube_letter_spacing
+    const lh = (typeof s.cube_line_spacing === 'number') ? s.cube_line_spacing : DEFAULTS.cube_line_spacing
+    inputLetterSpacing.value = ls
+    labelLetterSpacing.textContent = `${ls.toFixed(2)} em`
+    inputLineSpacing.value = lh
+    labelLineSpacing.textContent = `${lh.toFixed(2)}×`
+
+    inputGradientPreset.value = s.gradient_preset || DEFAULTS.gradient_preset
+    inputGradColorAHex.value = s.gradient_color_a ? s.gradient_color_a.toUpperCase() : ''
+    inputGradColorBHex.value = s.gradient_color_b ? s.gradient_color_b.toUpperCase() : ''
+    if (s.gradient_color_a) inputGradColorA.value = s.gradient_color_a
+    if (s.gradient_color_b) inputGradColorB.value = s.gradient_color_b
+
+    inputBrandTitle.value = s.brand_title || ''
+    inputBrandTagline.value = s.brand_tagline || ''
+    const accent = s.accent_color || DEFAULTS.accent_color
+    inputAccentPicker.value = accent
+    inputAccentHex.value = accent.toUpperCase()
+    if (s.logo_url) {
+      uploadLabel.classList.add('is-uploaded')
+      uploadTitle.textContent = 'Custom logo set'
+      uploadSub.textContent = 'Click to replace'
+    } else {
+      uploadLabel.classList.remove('is-uploaded')
+      uploadTitle.textContent = 'Click to upload'
+      uploadSub.textContent = 'Replaces previous file on the server'
+    }
+  }
+
+  const collectFormSettings = () => ({
+    cube_text_1: inputCubeText1.value.trim() || null,
+    cube_text_2: inputCubeText2.value.trim() || null,
+    cube_font: inputCubeFont.value || null,
+    cube_letter_spacing: parseFloat(inputLetterSpacing.value),
+    cube_line_spacing: parseFloat(inputLineSpacing.value),
+    gradient_preset: inputGradientPreset.value || null,
+    gradient_color_a: inputGradColorAHex.value.trim() || null,
+    gradient_color_b: inputGradColorBHex.value.trim() || null,
+    brand_title: inputBrandTitle.value.trim() || null,
+    brand_tagline: inputBrandTagline.value.trim() || null,
+    accent_color: inputAccentHex.value.trim() || null,
+    logo_url: pendingLogoUrl || published.logo_url || null,
+  })
+
+  // ----- token / session -----
+  const setToken = (t) => {
+    token = t
+    try {
+      if (t) localStorage.setItem(STORAGE_KEY, t)
+      else localStorage.removeItem(STORAGE_KEY)
+    } catch (_) { /* */ }
+    launcher.classList.toggle('is-authed', !!t)
+  }
+
+  const verifyToken = async () => {
+    if (!token) return false
+    try {
+      await apiFetch('/api/admin/me', {}, token)
+      return true
+    } catch (_) {
+      setToken(null)
+      return false
+    }
+  }
+
+  // ----- public bootstrap (load published settings on page load) -----
+  const bootstrapPublic = async () => {
+    try {
+      const s = await apiFetch('/api/settings')
+      published = s || {}
+      await applySettings(published)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to load public settings', err)
+    }
+  }
+
+  // ----- handlers -----
+  launcher.addEventListener('click', async () => {
+    const ok = await verifyToken()
+    if (ok) {
+      fillFormFromSettings(published)
+      openPanel()
+    } else {
+      openLogin()
+    }
+  })
+
+  loginCloseBtn.addEventListener('click', closeLogin)
+  loginBackdrop.addEventListener('click', closeLogin)
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    setLoginStatus('')
+    const password = loginInput.value
+    if (!password) { setLoginStatus('Enter your password.'); return }
+    loginSubmit.disabled = true
+    try {
+      const data = await apiFetch('/api/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      })
+      setToken(data.token)
+      loginInput.value = ''
+      closeLogin()
+      // Load fresh server-side state into the panel
+      try {
+        const s = await apiFetch('/api/admin/settings', {}, token)
+        published = s
+        fillFormFromSettings(published)
+        await applySettings(published)
+      } catch (_) { fillFormFromSettings(published) }
+      openPanel()
+    } catch (err) {
+      setLoginStatus(err.message || 'Login failed')
+    } finally {
+      loginSubmit.disabled = false
+    }
+  })
+
+  panelClose.addEventListener('click', closePanel)
+
+  // Font picker — update preview swatch + live-render the cube text
+  inputCubeFont.addEventListener('change', async () => {
+    const family = inputCubeFont.value
+    if (fontPreviewEl) {
+      fontPreviewEl.style.fontFamily = `"${family}", sans-serif`
+      fontPreviewEl.style.fontWeight = String(fontMeta(family).weight)
+    }
+    await ensureFontLoaded(family, fontMeta(family).weight)
+    const t1 = inputCubeText1.value.trim() || DEFAULTS.cube_text_1
+    const t2 = inputCubeText2.value.trim() || DEFAULTS.cube_text_2
+    try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family)) } catch (_) { /* */ }
+    try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family)) } catch (_) { /* */ }
+    setPanelStatus(`Font: ${family} · click Publish to save.`, 'success')
+  })
+
+  // Live-render cube text on each keystroke (so Shift+Enter feels instant)
+  const liveRenderCubeText = (() => {
+    let t = null
+    return () => {
+      if (t) clearTimeout(t)
+      t = setTimeout(() => {
+        const family = inputCubeFont.value || DEFAULTS.cube_font
+        const t1 = inputCubeText1.value.trim() || DEFAULTS.cube_text_1
+        const t2 = inputCubeText2.value.trim() || DEFAULTS.cube_text_2
+        try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family)) } catch (_) { /* */ }
+        try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family)) } catch (_) { /* */ }
+      }, 220)
+    }
+  })()
+  inputCubeText1.addEventListener('input', liveRenderCubeText)
+  inputCubeText2.addEventListener('input', liveRenderCubeText)
+
+  // Letter & line spacing sliders — live update (debounced 80ms feels snappy
+  // but doesn't thrash the GPU)
+  const liveSpacingRender = (() => {
+    let t = null
+    return () => {
+      if (t) clearTimeout(t)
+      t = setTimeout(() => {
+        const family = inputCubeFont.value || DEFAULTS.cube_font
+        const opts = {
+          letterSpacing: parseFloat(inputLetterSpacing.value),
+          lineSpacing: parseFloat(inputLineSpacing.value),
+        }
+        const t1 = inputCubeText1.value.trim() || DEFAULTS.cube_text_1
+        const t2 = inputCubeText2.value.trim() || DEFAULTS.cube_text_2
+        try { text1Texture.reload(buildTextCanvas(t1.toUpperCase(), family, opts)) } catch (_) { /* */ }
+        try { text2Texture.reload(buildTextCanvas(t2.toUpperCase(), family, opts)) } catch (_) { /* */ }
+      }, 80)
+    }
+  })()
+  inputLetterSpacing.addEventListener('input', () => {
+    labelLetterSpacing.textContent = `${parseFloat(inputLetterSpacing.value).toFixed(2)} em`
+    liveSpacingRender()
+  })
+  inputLineSpacing.addEventListener('input', () => {
+    labelLineSpacing.textContent = `${parseFloat(inputLineSpacing.value).toFixed(2)}×`
+    liveSpacingRender()
+  })
+
+  // Gradient preset + color overrides
+  const applyGradientFromForm = () => {
+    const preset = inputGradientPreset.value || DEFAULTS.gradient_preset
+    const a = inputGradColorAHex.value.trim() || null
+    const b = inputGradColorBHex.value.trim() || null
+    setGradientState(composeGradient(preset, a, b))
+  }
+  inputGradientPreset.addEventListener('change', () => {
+    applyGradientFromForm()
+    setPanelStatus('Preset applied · click Publish to save.', 'success')
+  })
+  const onGradColorChange = (picker, hexInput) => () => {
+    hexInput.value = picker.value.toUpperCase()
+    applyGradientFromForm()
+  }
+  const onGradHexChange = (picker, hexInput) => () => {
+    const v = (hexInput.value || '').trim()
+    if (v === '') { applyGradientFromForm(); return }
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) {
+      picker.value = v
+      applyGradientFromForm()
+    }
+  }
+  inputGradColorA.addEventListener('input', onGradColorChange(inputGradColorA, inputGradColorAHex))
+  inputGradColorAHex.addEventListener('input', onGradHexChange(inputGradColorA, inputGradColorAHex))
+  inputGradColorB.addEventListener('input', onGradColorChange(inputGradColorB, inputGradColorBHex))
+  inputGradColorBHex.addEventListener('input', onGradHexChange(inputGradColorB, inputGradColorBHex))
+  btnGradColorAClear.addEventListener('click', () => {
+    inputGradColorAHex.value = ''
+    applyGradientFromForm()
+  })
+  btnGradColorBClear.addEventListener('click', () => {
+    inputGradColorBHex.value = ''
+    applyGradientFromForm()
+  })
+
+  // Panel resizer — drag right edge to resize, persist width to localStorage
+  const applyPanelWidth = (px) => {
+    const w = Math.max(PANEL_WIDTH_MIN, Math.min(PANEL_WIDTH_MAX, Math.round(px)))
+    panel.style.width = `${w}px`
+    return w
+  }
+  // Restore saved width
+  try {
+    const saved = parseInt(localStorage.getItem(PANEL_WIDTH_KEY), 10)
+    if (Number.isFinite(saved)) applyPanelWidth(saved)
+  } catch (_) { /* */ }
+  let dragState = null
+  const onResizeMove = (e) => {
+    if (!dragState) return
+    const x = (e.touches ? e.touches[0].clientX : e.clientX)
+    const next = dragState.startWidth + (x - dragState.startX)
+    applyPanelWidth(next)
+  }
+  const onResizeEnd = () => {
+    if (!dragState) return
+    panel.classList.remove('is-resizing')
+    document.removeEventListener('mousemove', onResizeMove)
+    document.removeEventListener('mouseup', onResizeEnd)
+    document.removeEventListener('touchmove', onResizeMove)
+    document.removeEventListener('touchend', onResizeEnd)
+    try { localStorage.setItem(PANEL_WIDTH_KEY, String(panel.getBoundingClientRect().width)) } catch (_) { /* */ }
+    dragState = null
+  }
+  const onResizeStart = (e) => {
+    const x = (e.touches ? e.touches[0].clientX : e.clientX)
+    dragState = { startX: x, startWidth: panel.getBoundingClientRect().width }
+    panel.classList.add('is-resizing')
+    document.addEventListener('mousemove', onResizeMove)
+    document.addEventListener('mouseup', onResizeEnd)
+    document.addEventListener('touchmove', onResizeMove, { passive: true })
+    document.addEventListener('touchend', onResizeEnd)
+    e.preventDefault()
+  }
+  panelResizer.addEventListener('mousedown', onResizeStart)
+  panelResizer.addEventListener('touchstart', onResizeStart, { passive: false })
+  // Double-click to reset width
+  panelResizer.addEventListener('dblclick', () => {
+    applyPanelWidth(PANEL_WIDTH_DEFAULT)
+    try { localStorage.setItem(PANEL_WIDTH_KEY, String(PANEL_WIDTH_DEFAULT)) } catch (_) { /* */ }
+  })
+
+  // accent picker sync
+  inputAccentPicker.addEventListener('input', (e) => {
+    const v = e.target.value
+    inputAccentHex.value = v.toUpperCase()
+    applyAccent(v)
+  })
+  inputAccentHex.addEventListener('input', (e) => {
+    const v = (e.target.value || '').trim()
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) {
+      inputAccentPicker.value = v
+      applyAccent(v)
+    }
+  })
+  swatches.forEach((sw) => {
+    sw.addEventListener('click', () => {
+      const c = sw.getAttribute('data-color')
+      inputAccentPicker.value = c
+      inputAccentHex.value = c.toUpperCase()
+      applyAccent(c)
+    })
+  })
+
+  // Upload
+  uploadInput.addEventListener('change', async () => {
+    const file = uploadInput.files && uploadInput.files[0]
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setPanelStatus('Logo too large (max 4 MB).', 'error')
+      uploadInput.value = ''
+      return
+    }
+    uploadProgress.hidden = false
+    uploadProgress.textContent = `Uploading ${file.name}…`
+    setPanelStatus('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const data = await apiFetch('/api/admin/upload/logo', { method: 'POST', body: fd }, token)
+      pendingLogoUrl = data.logo_url
+      // Apply immediately as a live preview
+      const canvas = await buildLogoCanvas(pendingLogoUrl)
+      logoTexture.reload(canvas)
+      uploadLabel.classList.add('is-uploaded')
+      uploadTitle.textContent = 'Custom logo set'
+      uploadSub.textContent = 'Click to replace'
+      uploadProgress.textContent = `Uploaded ${(data.size / 1024).toFixed(1)} KB`
+      setPanelStatus('Logo applied (already saved · publish to update visitors).', 'success')
+      // The upload route already persists logo_url server-side, so clearing the
+      // pending pointer is fine — we keep it set just to highlight that the
+      // panel state has uncommitted text/color edits.
+    } catch (err) {
+      setPanelStatus(err.message || 'Upload failed', 'error')
+      uploadProgress.textContent = ''
+    } finally {
+      uploadInput.value = ''
+      setTimeout(() => { uploadProgress.hidden = true }, 1800)
+    }
+  })
+
+  // Preview button — apply current form values locally without saving
+  previewBtn.addEventListener('click', async () => {
+    setPanelStatus('Previewing…')
+    const s = collectFormSettings()
+    await applySettings(s)
+    setPanelStatus('Preview applied · click Publish to save.', 'success')
+  })
+
+  publishBtn.addEventListener('click', async () => {
+    setPanelStatus('Publishing…')
+    publishBtn.disabled = true
+    const s = collectFormSettings()
+    try {
+      const saved = await apiFetch('/api/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify(s),
+      }, token)
+      published = saved
+      pendingLogoUrl = null
+      await applySettings(saved)
+      setPanelStatus('Published — visitors will see this now.', 'success')
+    } catch (err) {
+      setPanelStatus(err.message || 'Publish failed', 'error')
+    } finally {
+      publishBtn.disabled = false
+    }
+  })
+
+  resetBtn.addEventListener('click', async () => {
+    if (!window.confirm('Reset all settings to defaults? This deletes your uploaded logo.')) return
+    setPanelStatus('Resetting…')
+    try {
+      const saved = await apiFetch('/api/admin/settings/reset', { method: 'POST' }, token)
+      published = saved
+      pendingLogoUrl = null
+      // Reload bundled defaults for cube logo + texts
+      try { logoTexture.reload(require('~assets/logo.png').default || require('~assets/logo.png')) } catch (_) { /* */ }
+      try { text1Texture.reload(require('~assets/text-1.png').default || require('~assets/text-1.png')) } catch (_) { /* */ }
+      try { text2Texture.reload(require('~assets/text-2.png').default || require('~assets/text-2.png')) } catch (_) { /* */ }
+      resetGradientState()
+      fillFormFromSettings(saved)
+      await applySettings(saved)
+      setPanelStatus('All settings reset to defaults.', 'success')
+    } catch (err) {
+      setPanelStatus(err.message || 'Reset failed', 'error')
+    }
+  })
+
+  logoutBtn.addEventListener('click', async () => {
+    try { await apiFetch('/api/admin/logout', { method: 'POST' }, token) } catch (_) { /* */ }
+    setToken(null)
+    closePanel()
+    setPanelStatus('')
+  })
+
+  // Esc closes
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return
+    if (loginModal.classList.contains('is-active')) closeLogin()
+    else if (panel.classList.contains('is-active')) closePanel()
+  })
+
+  // Initial state — visit launcher pill & load public settings
+  bootstrapPublic()
+  if (token) {
+    verifyToken().then((ok) => { if (!ok) setToken(null) })
+  }
+}
