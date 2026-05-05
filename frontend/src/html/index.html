@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Jax Studio — Coming Soon</title>
+    <meta name="description" content="Jax Studio — Graphic Design portfolio. Coming soon." />
+    <meta name="keywords" content="jax studio, graphic design, portfolio, branding, coming soon" />
+    <meta name="author" content="Jax Studio" />
+    <meta property="og:title" content="Jax Studio — Coming Soon" />
+    <meta property="og:description" content="Graphic Design portfolio launching soon." />
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="base.css" />
+    <script>
+      document.documentElement.className = "js"
+    </script>
+  </head>
+  <body class="demo-1">
+    <main>
+      <div class="frame" data-testid="frame">
+        <h1 class="frame__title" data-testid="brand-title">Jax Studio</h1>
+        <div class="frame__tagline" data-testid="brand-tagline">Coming Soon</div>
+      </div>
+      <div class="content" data-testid="cube-stage"></div>
+      <div class="welcome-overlay" data-testid="welcome-overlay" aria-hidden="true">
+        <div class="welcome-overlay__ripple" data-testid="welcome-ripple"></div>
+        <div class="welcome-overlay__text" data-testid="welcome-text">
+          <span class="welcome-overlay__greet">Welcome to</span>
+          <span class="welcome-overlay__brand">Jax Studio<span class="welcome-overlay__bang">!</span></span>
+          <span class="welcome-overlay__sub">Graphic Design Portfolio</span>
+          <button class="welcome-overlay__close" data-testid="welcome-close" aria-label="Close welcome">Back</button>
+        </div>
+      </div>
+      <div class="hint" data-testid="cube-hint">click the cube</div>
+    </main>
+  </body>
+</html>
