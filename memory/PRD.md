@@ -43,6 +43,13 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 10 (Feb 2026) — Production static build (Jax site)
+- Switched supervisor's `frontend` program from `yarn start` (webpack-dev-server) to `yarn start:prod`
+- New `start:prod` script in `/app/frontend/package.json`: `yarn build && serve -s dist -l tcp://0.0.0.0:3000 --no-clipboard`
+- Added `serve@latest` as a dev dependency (lightweight static-only HTTP server with SPA fallback)
+- Verified live preview URL: `/`, `/main.js`, `/og-image.png` all return 200 with the production-minified webpack build; `/api/*` continues to be routed to the FastAPI backend (8001) by the Kubernetes ingress, fully unaffected
+- To restore dev-mode hot reload during local edits: run `yarn start` manually (port 3500 free via `yarn dev` on a separate port if needed)
+
 ### Phase 9 (Feb 2026) — Admin Inbox + SendGrid Event Webhook
 - **Admin Inbox** — top section of the floating control panel:
   - Live unread count badge in the section title (`6`, `99+`, hidden when 0)
