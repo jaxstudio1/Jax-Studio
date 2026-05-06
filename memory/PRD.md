@@ -43,6 +43,12 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 8 verified (Feb 2026) — Template build + smoke screenshot
+- `yarn install` + `yarn build` clean in `/app/template/frontend` (webpack 4 production build, all assets compile)
+- Served via `python -m http.server` and screenshot-verified: STUDIO NAME / GET IN TOUCH / ADMIN / COMING SOON corners present, placeholder rounded-square logo + COMING/SOON cube text textures, "CLICK THE CUBE TO ENTER" hint visible, no Jax-specific branding bleed
+- Jax live site (`/app/frontend`) also smoke-screenshot verified: J cube, JAX STUDIO / GET IN TOUCH / ADMIN / COMING SOON corners present, "CLICK THE CUBE" hint visible
+- Both backends confirmed using MongoDB via `motor.motor_asyncio.AsyncIOMotorClient` for `site_settings` (singleton id="main") and `contact_submissions` collections — handoff summary's "in-memory dict" claim was stale, the DB persistence layer is real
+
 ### Phase 8 (May 2026) — Standalone reusable template at `/app/template/`
 - Created a complete, standalone, brand-neutral copy of the codebase at `/app/template/` (frontend + backend + README)
 - **Stripped Jax-specific defaults** throughout:
