@@ -403,8 +403,17 @@ async def create_status_check(payload: StatusCheckCreate):
 
 
 @api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    rows = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+async def get_status_checks(limit: int = 50, skip: int = 0):
+    limit = max(1, min(limit, 200))
+    skip = max(0, skip)
+    rows = await (
+        db.status_checks
+        .find({}, {"_id": 0})
+        .sort("timestamp", -1)
+        .skip(skip)
+        .limit(limit)
+        .to_list(limit)
+    )
     for r in rows:
         if isinstance(r.get('timestamp'), str):
             r['timestamp'] = datetime.fromisoformat(r['timestamp'])
