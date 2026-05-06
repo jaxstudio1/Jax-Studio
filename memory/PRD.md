@@ -43,6 +43,27 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 9 (Feb 2026) — Admin Inbox + SendGrid Event Webhook
+- **Admin Inbox** — top section of the floating control panel:
+  - Live unread count badge in the section title (`6`, `99+`, hidden when 0)
+  - Refresh button (rotating ↻) to re-fetch
+  - Per-message card: name, relative time (just now / 23m ago / 2h ago / 3d ago), email, 2-line snippet, optional event chips (delivered / open / click / bounce / dropped / spamreport — each color-coded)
+  - Unread items get an orange left bar + tinted background; clicking expands the item, marks it read on the server (PATCH `/api/admin/contacts/{id}` with `{read:true}`), shows the full message + Reply (mailto:) / Mark unread / Delete actions
+  - Backend: `GET /api/admin/contacts?limit=&skip=&unread_only=` (auth required, paginated, newest first, returns `{total, unread, items[]}`), `GET /api/admin/contacts/{id}`, `PATCH /api/admin/contacts/{id}` (mark read/unread), `DELETE /api/admin/contacts/{id}`
+  - New `read: false` and `events: []` fields persisted at `contact_submissions` insert time
+- **SendGrid Event Webhook** — `POST /api/webhooks/sendgrid`:
+  - ECDSA P-256 (SHA-256) signed-payload verification using SendGrid's official `EventWebhook` helper (`sendgrid-python` SDK ≥ 6.x)
+  - Rejects: no headers → 401, bad signature → 403, replays > 10 min old → 403
+  - Custom args (`submission_id`, `kind`) attached to every outgoing `Mail` so events map back to their `contact_submissions` doc; events appended via `$push: { events: {...} }`
+  - Verification key stored at `SENDGRID_WEBHOOK_PUBLIC_KEY` env var (loaded once at startup, fail-closed if unset)
+  - Pytest at `/app/backend/tests/test_webhook_signature.py` validates the full chain with a synthetic P-256 keypair (3/3 passing)
+- **Configuration step (one-time, on user's side)**:
+  1. SendGrid Dashboard → Settings → Mail Settings → Event Webhook
+  2. POST URL: `<deployed-host>/api/webhooks/sendgrid`
+  3. Enable **Signed Event Webhook** (verification key is already in `.env`)
+  4. Pick events: delivered, opened, clicked, bounced, dropped (recommended)
+  5. Send "Test Integration" → status code should be 200
+
 ### Phase 8 verified (Feb 2026) — Template build + smoke screenshot
 - `yarn install` + `yarn build` clean in `/app/template/frontend` (webpack 4 production build, all assets compile)
 - Served via `python -m http.server` and screenshot-verified: STUDIO NAME / GET IN TOUCH / ADMIN / COMING SOON corners present, placeholder rounded-square logo + COMING/SOON cube text textures, "CLICK THE CUBE TO ENTER" hint visible, no Jax-specific branding bleed

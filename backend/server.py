@@ -22,7 +22,8 @@ import bcrypt
 import jwt as pyjwt
 
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, From, To, ReplyTo
+from sendgrid.helpers.mail import Mail, From, To, ReplyTo, CustomArg
+from sendgrid.helpers.eventwebhook import EventWebhook
 
 
 # MongoDB connection
@@ -35,6 +36,15 @@ SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'hello@jaxstudio.ink')
 SENDER_NAME = os.environ.get('SENDER_NAME', 'Jax Studio')
 OWNER_EMAIL = os.environ.get('OWNER_EMAIL', 'jaxstudio.ink@gmail.com')
+SENDGRID_WEBHOOK_PUBLIC_KEY = os.environ.get('SENDGRID_WEBHOOK_PUBLIC_KEY', '').strip()
+# Pre-build verifier (cheap; reused per request)
+_sg_event_webhook = EventWebhook()
+_sg_webhook_pubkey = None
+if SENDGRID_WEBHOOK_PUBLIC_KEY:
+    try:
+        _sg_webhook_pubkey = _sg_event_webhook.convert_public_key_to_ecdsa(SENDGRID_WEBHOOK_PUBLIC_KEY)
+    except Exception as _e:
+        logging.getLogger(__name__).error(f"Could not load SENDGRID_WEBHOOK_PUBLIC_KEY: {_e}")
 
 # Admin auth
 JWT_SECRET = os.environ['JWT_SECRET']
@@ -268,6 +278,8 @@ def send_contact_emails(name, email, message, submission_id):
             html_content=_owner_email_html(name, email, message, submission_id),
         )
         owner_mail.reply_to = ReplyTo(email, name)
+        owner_mail.add_custom_arg(CustomArg("submission_id", submission_id))
+        owner_mail.add_custom_arg(CustomArg("kind", "owner"))
         results["owner"] = _send_via_sendgrid(owner_mail)
         logger.info(f"Owner email status: {results['owner']} for {submission_id}")
     except Exception as e:
@@ -282,6 +294,8 @@ def send_contact_emails(name, email, message, submission_id):
             html_content=_autoreply_email_html(name, email, message),
         )
         customer_mail.reply_to = ReplyTo(OWNER_EMAIL, SENDER_NAME)
+        customer_mail.add_custom_arg(CustomArg("submission_id", submission_id))
+        customer_mail.add_custom_arg(CustomArg("kind", "customer"))
         results["customer"] = _send_via_sendgrid(customer_mail)
         logger.info(f"Customer auto-reply status: {results['customer']} for {submission_id}")
     except Exception as e:
@@ -414,6 +428,8 @@ async def submit_contact(payload: ContactRequest, background_tasks: BackgroundTa
         "user_agent": user_agent,
         "created_at": now_iso,
         "email_sent": False,
+        "read": False,
+        "events": [],
     }
     try:
         await db.contact_submissions.insert_one(doc)
@@ -567,6 +583,164 @@ async def admin_upload_logo(file: UploadFile = File(...), _: dict = Depends(requ
         upsert=True,
     )
     return {"logo_url": public_url, "size": len(contents), "ext": ext}
+
+
+# ================= Admin: Contact submissions inbox =================
+class ContactPatch(BaseModel):
+    read: Optional[bool] = None
+
+
+def _summary_doc(d: dict) -> dict:
+    msg = d.get("message", "") or ""
+    snippet = msg[:140] + ("…" if len(msg) > 140 else "")
+    events = d.get("events") or []
+    statuses = sorted({e.get("event") for e in events if e.get("event")})
+    return {
+        "id": d.get("id"),
+        "name": d.get("name"),
+        "email": d.get("email"),
+        "snippet": snippet,
+        "created_at": d.get("created_at"),
+        "read": bool(d.get("read", False)),
+        "email_sent": bool(d.get("email_sent", False)),
+        "event_statuses": statuses,
+        "event_count": len(events),
+    }
+
+
+@api_router.get("/admin/contacts")
+async def admin_list_contacts(
+    limit: int = 50,
+    skip: int = 0,
+    unread_only: bool = False,
+    _: dict = Depends(require_admin),
+):
+    limit = max(1, min(limit, 200))
+    skip = max(0, skip)
+    query: dict = {}
+    if unread_only:
+        query["read"] = {"$ne": True}
+    total = await db.contact_submissions.count_documents(query)
+    unread = await db.contact_submissions.count_documents({"read": {"$ne": True}})
+    cursor = (
+        db.contact_submissions
+        .find(query, {"_id": 0})
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
+    rows = [_summary_doc(d) async for d in cursor]
+    return {"total": total, "unread": unread, "items": rows}
+
+
+@api_router.get("/admin/contacts/{submission_id}")
+async def admin_get_contact(submission_id: str, _: dict = Depends(require_admin)):
+    doc = await db.contact_submissions.find_one({"id": submission_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return doc
+
+
+@api_router.patch("/admin/contacts/{submission_id}")
+async def admin_patch_contact(
+    submission_id: str,
+    payload: ContactPatch,
+    _: dict = Depends(require_admin),
+):
+    update = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not update:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    res = await db.contact_submissions.update_one(
+        {"id": submission_id}, {"$set": update}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    doc = await db.contact_submissions.find_one({"id": submission_id}, {"_id": 0})
+    return _summary_doc(doc) if doc else {"id": submission_id, **update}
+
+
+@api_router.delete("/admin/contacts/{submission_id}")
+async def admin_delete_contact(submission_id: str, _: dict = Depends(require_admin)):
+    res = await db.contact_submissions.delete_one({"id": submission_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return {"status": "ok", "id": submission_id}
+
+
+# ================= SendGrid Event Webhook =================
+@api_router.post("/webhooks/sendgrid")
+async def sendgrid_event_webhook(request: Request):
+    """Receive SendGrid event webhook payloads, verify signature, persist per-submission events.
+
+    SendGrid posts an array of event dicts. Each event we sent carries `submission_id`
+    (and `kind`) as custom_args, so we can map events back to their `contact_submissions` doc.
+    """
+    raw = await request.body()
+    sig = request.headers.get("X-Twilio-Email-Event-Webhook-Signature")
+    ts = request.headers.get("X-Twilio-Email-Event-Webhook-Timestamp")
+
+    if _sg_webhook_pubkey is None:
+        # Not configured = don't accept events (fail closed)
+        raise HTTPException(status_code=503, detail="Webhook not configured")
+    if not sig or not ts:
+        raise HTTPException(status_code=401, detail="Missing signature headers")
+
+    # Verify ECDSA signature over (timestamp + raw_body)
+    # SDK signature: verify_signature(payload: str, signature: str, timestamp: str, public_key=...)
+    try:
+        valid = _sg_event_webhook.verify_signature(
+            raw.decode("utf-8"), sig, ts, _sg_webhook_pubkey,
+        )
+    except Exception as e:
+        logger.warning(f"SendGrid sig verify error: {e}")
+        valid = False
+    if not valid:
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    # Reject replays older than 10 minutes
+    try:
+        if abs(int(datetime.now(timezone.utc).timestamp()) - int(ts)) > 600:
+            raise HTTPException(status_code=403, detail="Stale request")
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid timestamp")
+
+    # Parse JSON body
+    import json as _json
+    try:
+        events = _json.loads(raw.decode("utf-8"))
+        if not isinstance(events, list):
+            raise ValueError("payload must be a JSON array")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Bad JSON: {e}")
+
+    accepted = 0
+    skipped = 0
+    for ev in events:
+        sub_id = ev.get("submission_id")
+        if not sub_id:
+            skipped += 1
+            continue
+        evt_doc = {
+            "event": ev.get("event"),
+            "kind": ev.get("kind"),
+            "email": ev.get("email"),
+            "timestamp": ev.get("timestamp"),
+            "received_at": datetime.now(timezone.utc).isoformat(),
+            "sg_event_id": ev.get("sg_event_id"),
+            "sg_message_id": ev.get("sg_message_id"),
+            "reason": ev.get("reason"),
+            "url": ev.get("url"),
+        }
+        # Drop None values to keep docs tidy
+        evt_doc = {k: v for k, v in evt_doc.items() if v is not None}
+        await db.contact_submissions.update_one(
+            {"id": sub_id},
+            {"$push": {"events": evt_doc}},
+        )
+        accepted += 1
+
+    logger.info(f"SendGrid webhook: accepted={accepted} skipped={skipped}")
+    return {"accepted": accepted, "skipped": skipped}
 
 
 # Include router and middleware

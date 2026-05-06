@@ -254,6 +254,13 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const logoutBtn = $('[data-testid="admin-logout-btn"]')
   const panelStatus = $('[data-testid="admin-panel-status"]')
 
+  // Inbox refs
+  const inboxList = $('[data-testid="admin-inbox-list"]')
+  const inboxBadge = $('[data-testid="admin-inbox-badge"]')
+  const inboxMeta = $('[data-testid="admin-inbox-meta"]')
+  const inboxEmpty = $('[data-testid="admin-inbox-empty"]')
+  const inboxRefreshBtn = $('[data-testid="admin-inbox-refresh"]')
+
   const brandTitleEl = $('[data-testid="brand-title"]')
   const brandTaglineEl = $('[data-testid="brand-tagline"]')
   const welcomeBrandEl = document.querySelector('.welcome-overlay__brand')
@@ -439,6 +446,158 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     }
   }
 
+  // ----- Inbox -----
+  const _esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
+  const _relTime = (iso) => {
+    if (!iso) return ''
+    const t = new Date(iso).getTime()
+    if (isNaN(t)) return ''
+    const diff = Math.max(0, Date.now() - t)
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return 'just now'
+    if (m < 60) return `${m}m ago`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h}h ago`
+    const d = Math.floor(h / 24)
+    if (d < 7) return `${d}d ago`
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+
+  const _eventChip = (status) => {
+    const s = String(status || '').toLowerCase()
+    const cls = ['delivered', 'open', 'click', 'bounce', 'dropped', 'spamreport'].includes(s) ? `is-${s}` : ''
+    return `<span class="inbox-event ${cls}">${_esc(s)}</span>`
+  }
+
+  const updateInboxBadge = (unread) => {
+    if (!inboxBadge) return
+    if (unread > 0) {
+      inboxBadge.textContent = unread > 99 ? '99+' : String(unread)
+      inboxBadge.hidden = false
+    } else {
+      inboxBadge.hidden = true
+    }
+  }
+
+  const renderInbox = (items) => {
+    if (!inboxList) return
+    inboxList.innerHTML = ''
+    if (!items || items.length === 0) {
+      if (inboxEmpty) inboxEmpty.hidden = false
+      return
+    }
+    if (inboxEmpty) inboxEmpty.hidden = true
+    items.forEach((it) => {
+      const el = document.createElement('article')
+      el.className = `inbox-item${it.read ? '' : ' is-unread'}`
+      el.setAttribute('role', 'listitem')
+      el.setAttribute('data-id', it.id)
+      el.setAttribute('data-testid', `inbox-item-${it.id}`)
+      const events = (it.event_statuses || []).map(_eventChip).join('')
+      el.innerHTML = `
+        <div class="inbox-item__head">
+          <span class="inbox-item__name">${_esc(it.name || 'Anonymous')}</span>
+          <span class="inbox-item__time">${_esc(_relTime(it.created_at))}</span>
+        </div>
+        <div class="inbox-item__email">${_esc(it.email)}</div>
+        <p class="inbox-item__snippet">${_esc(it.snippet)}</p>
+        ${events ? `<div class="inbox-item__events">${events}</div>` : ''}
+      `
+      el.addEventListener('click', () => expandInboxItem(el, it))
+      inboxList.appendChild(el)
+    })
+  }
+
+  const expandInboxItem = async (el, summary) => {
+    if (el.classList.contains('is-expanded')) return
+    // Mark read on the server if needed
+    if (!summary.read) {
+      try {
+        await apiFetch(`/api/admin/contacts/${summary.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ read: true }),
+        }, token)
+        summary.read = true
+        el.classList.remove('is-unread')
+        // Decrement unread badge
+        const cur = parseInt(inboxBadge && inboxBadge.textContent || '0', 10) || 0
+        updateInboxBadge(Math.max(0, cur - 1))
+      } catch (_) { /* ignore */ }
+    }
+    // Fetch full message
+    let detail = null
+    try { detail = await apiFetch(`/api/admin/contacts/${summary.id}`, {}, token) } catch (_) { detail = null }
+    const fullMsg = (detail && detail.message) || summary.snippet || ''
+    el.classList.add('is-expanded')
+    const existing = el.querySelector('.inbox-item__full')
+    if (existing) existing.remove()
+    const full = document.createElement('div')
+    full.className = 'inbox-item__full'
+    full.textContent = fullMsg
+    el.appendChild(full)
+
+    const actions = document.createElement('div')
+    actions.className = 'inbox-item__actions'
+    actions.innerHTML = `
+      <a class="is-reply" href="mailto:${_esc(summary.email)}?subject=${encodeURIComponent('Re: your message to Jax Studio')}" data-testid="inbox-reply-${summary.id}" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">Reply</a>
+      <button type="button" class="is-mark-unread" data-testid="inbox-unread-${summary.id}">Mark unread</button>
+      <button type="button" class="is-delete" data-testid="inbox-delete-${summary.id}">Delete</button>
+    `
+    actions.addEventListener('click', (e) => e.stopPropagation())
+    el.appendChild(actions)
+
+    actions.querySelector('.is-mark-unread').addEventListener('click', async () => {
+      try {
+        await apiFetch(`/api/admin/contacts/${summary.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ read: false }),
+        }, token)
+        const cur = parseInt(inboxBadge && inboxBadge.textContent || '0', 10) || 0
+        updateInboxBadge(cur + 1)
+        loadInbox()
+      } catch (err) { setPanelStatus(err.message || 'Could not mark unread', 'error') }
+    })
+
+    actions.querySelector('.is-delete').addEventListener('click', async () => {
+      if (!window.confirm('Delete this message? This cannot be undone.')) return
+      try {
+        await apiFetch(`/api/admin/contacts/${summary.id}`, { method: 'DELETE' }, token)
+        loadInbox()
+      } catch (err) { setPanelStatus(err.message || 'Delete failed', 'error') }
+    })
+  }
+
+  const loadInbox = async () => {
+    if (!inboxList || !token) return
+    if (inboxRefreshBtn) inboxRefreshBtn.classList.add('is-spinning')
+    if (inboxMeta) inboxMeta.textContent = 'Loading messages…'
+    try {
+      const data = await apiFetch('/api/admin/contacts?limit=50', {}, token)
+      const items = data.items || []
+      const total = data.total || 0
+      const unread = data.unread || 0
+      updateInboxBadge(unread)
+      if (inboxMeta) {
+        inboxMeta.textContent = total === 0
+          ? 'No submissions yet.'
+          : `${total} message${total === 1 ? '' : 's'} · ${unread} unread`
+      }
+      renderInbox(items)
+    } catch (err) {
+      if (inboxMeta) inboxMeta.textContent = `Could not load inbox: ${err.message}`
+      renderInbox([])
+    } finally {
+      setTimeout(() => inboxRefreshBtn && inboxRefreshBtn.classList.remove('is-spinning'), 400)
+    }
+  }
+
+  if (inboxRefreshBtn) {
+    inboxRefreshBtn.addEventListener('click', (e) => { e.stopPropagation(); loadInbox() })
+  }
+
   // ----- public bootstrap (load published settings on page load) -----
   const bootstrapPublic = async () => {
     try {
@@ -457,6 +616,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (ok) {
       fillFormFromSettings(published)
       openPanel()
+      loadInbox()
     } else {
       openLogin()
     }
@@ -487,6 +647,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
         await applySettings(published)
       } catch (_) { fillFormFromSettings(published) }
       openPanel()
+      loadInbox()
     } catch (err) {
       setLoginStatus(err.message || 'Login failed')
     } finally {

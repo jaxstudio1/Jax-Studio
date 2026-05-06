@@ -186,6 +186,16 @@
         </div>
 
         <div class="admin-panel__scroll">
+          <section class="admin-section admin-section--inbox" data-testid="admin-inbox-section">
+            <div class="admin-section__head">
+              <h3 class="admin-section__title">Inbox <span class="admin-inbox__badge" data-testid="admin-inbox-badge" hidden>0</span></h3>
+              <button type="button" class="admin-panel__link admin-inbox__refresh" data-testid="admin-inbox-refresh" aria-label="Refresh inbox">↻</button>
+            </div>
+            <p class="admin-section__hint" data-testid="admin-inbox-meta">Loading messages…</p>
+            <div class="admin-inbox__list" data-testid="admin-inbox-list" role="list"></div>
+            <p class="admin-inbox__empty" data-testid="admin-inbox-empty" hidden>No messages yet.</p>
+          </section>
+
           <section class="admin-section">
             <h3 class="admin-section__title">Cube logo</h3>
             <p class="admin-section__hint">PNG or SVG · max 4 MB · transparent bg recommended</p>
