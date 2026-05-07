@@ -43,6 +43,14 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 13.1 (Feb 2026) — Ripple base timing slowed ~25%
+User feedback: the default `1.0×` ripple felt too fast. Slowed every base duration & delay roughly 25 % so the new default reads as relaxed-cinematic instead of punchy:
+- Ring durations: 1.40 / 1.55 / 1.70 / 1.85 / 2.00 s → **1.75 / 1.95 / 2.15 / 2.35 / 2.55 s**
+- Ring start delays: 0 / 0.10 / 0.22 / 0.36 / 0.52 s → **0 / 0.13 / 0.28 / 0.45 / 0.65 s**
+- Final fill: duration 1.10 → **1.40 s**, delay 0.45 → **0.55 s**
+- Welcome heading fade-in: delay 1.50 → **1.85 s**
+- Slider remains 0.5× → 2.0× — users who want punchier still have full range below 1.0×, dreamier still goes above
+
 ### Phase 13 (Feb 2026) — Admin Page 3: Cube ripple "Effects"
 - **3 new controls** on Page 3 of the multi-page admin panel:
   - **Speed** slider (0.5× → 2.0×, default 1.0×) — multiplier applied to every ripple animation duration & delay (ring 1–5 + final fill + welcome text fade-in) via the new `--ripple-speed` CSS custom property on `:root`. Lower = punchier, higher = dreamier.

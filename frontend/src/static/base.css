@@ -286,32 +286,32 @@ main {
 }
 
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(1) {
-  animation: water-ring calc(var(--ripple-speed, 1) * 1.40s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: water-ring calc(var(--ripple-speed, 1) * 1.75s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: 0s;
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(2) {
-  animation: water-ring calc(var(--ripple-speed, 1) * 1.55s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--ripple-speed, 1) * 0.10s);
+  animation: water-ring calc(var(--ripple-speed, 1) * 1.95s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.13s);
   border-color: rgba(255, 240, 225, 0.45);
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(3) {
-  animation: water-ring calc(var(--ripple-speed, 1) * 1.70s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--ripple-speed, 1) * 0.22s);
+  animation: water-ring calc(var(--ripple-speed, 1) * 2.15s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.28s);
   border-color: rgba(255, 235, 215, 0.28);
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(4) {
-  animation: water-ring calc(var(--ripple-speed, 1) * 1.85s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--ripple-speed, 1) * 0.36s);
+  animation: water-ring calc(var(--ripple-speed, 1) * 2.35s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.45s);
   border-color: rgba(255, 230, 210, 0.16);
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(5) {
-  animation: water-ring calc(var(--ripple-speed, 1) * 2.00s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--ripple-speed, 1) * 0.52s);
+  animation: water-ring calc(var(--ripple-speed, 1) * 2.55s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.65s);
   border-color: rgba(255, 225, 205, 0.10);
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-fill {
-  animation: water-fill calc(var(--ripple-speed, 1) * 1.10s) cubic-bezier(0.5, 0, 0.2, 1) forwards;
-  animation-delay: calc(var(--ripple-speed, 1) * 0.45s);
+  animation: water-fill calc(var(--ripple-speed, 1) * 1.40s) cubic-bezier(0.5, 0, 0.2, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.55s);
 }
 
 @keyframes water-ring {
@@ -352,7 +352,7 @@ main {
   gap: 1.0rem;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.7s ease calc(var(--ripple-speed, 1) * 1.50s), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--ripple-speed, 1) * 1.50s);
+  transition: opacity 0.7s ease calc(var(--ripple-speed, 1) * 1.85s), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--ripple-speed, 1) * 1.85s);
   padding: 0 2rem;
   z-index: 2;
 }
