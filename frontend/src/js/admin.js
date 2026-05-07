@@ -301,6 +301,10 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const aboutYears = $('[data-testid="admin-about-years"]')
   const aboutSkills = $('[data-testid="admin-about-skills"]')
   const aboutTools = $('[data-testid="admin-about-tools"]')
+  // About transition (Page 5 — separate effect for scroll-to-about)
+  const aboutTransitionEffect = $('[data-testid="admin-about-transition-effect"]')
+  const aboutTransitionSpeed = $('[data-testid="admin-about-transition-speed"]')
+  const aboutTransitionSpeedLbl = $('[data-testid="admin-about-transition-speed-value"]')
   const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
   const inputAccentHex = $('[data-testid="admin-accent-hex"]')
   const swatches = panel.querySelectorAll('.admin-color__swatch')
@@ -463,6 +467,9 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (window.__about && typeof window.__about.applyAboutSettings === 'function') {
       window.__about.applyAboutSettings(s || {})
     }
+    if (window.__welcomeFx && typeof window.__welcomeFx.setAboutTransitionSettings === 'function') {
+      window.__welcomeFx.setAboutTransitionSettings(s || {})
+    }
   }
 
   const applySettings = async (s) => {
@@ -569,6 +576,12 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       const list = Array.isArray(s.about_tools) ? s.about_tools : []
       aboutTools.value = list.join(', ')
     }
+    if (aboutTransitionEffect) aboutTransitionEffect.value = s.about_transition_effect || ''
+    if (aboutTransitionSpeed) {
+      const v = (typeof s.about_transition_speed === 'number') ? s.about_transition_speed : 1.0
+      aboutTransitionSpeed.value = String(v)
+      if (aboutTransitionSpeedLbl) aboutTransitionSpeedLbl.textContent = `${v.toFixed(2)}×`
+    }
     if (aboutPhotoPreview) {
       const url = s.about_photo_url
       if (url) {
@@ -651,6 +664,8 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (aboutTools) {
       base.about_tools = aboutTools.value.split(',').map((t) => t.trim()).filter(Boolean)
     }
+    if (aboutTransitionEffect) base.about_transition_effect = aboutTransitionEffect.value || null
+    if (aboutTransitionSpeed) base.about_transition_speed = parseFloat(aboutTransitionSpeed.value)
     return base
   }
 
@@ -1105,6 +1120,25 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   ;[aboutEyebrow, aboutHeadingPre, aboutHeadingEm, aboutBody, aboutName, aboutRole, aboutYears, aboutSkills, aboutTools].forEach((el) => {
     if (el) el.addEventListener('input', liveApplyAbout)
   })
+
+  // ---- About transition (Page 5) — live preview & speed label ----
+  const liveApplyAboutTransition = () => {
+    const settings = {
+      about_transition_effect: aboutTransitionEffect ? (aboutTransitionEffect.value || null) : null,
+      about_transition_speed: aboutTransitionSpeed ? parseFloat(aboutTransitionSpeed.value) : 1.0,
+    }
+    if (window.__welcomeFx && typeof window.__welcomeFx.setAboutTransitionSettings === 'function') {
+      window.__welcomeFx.setAboutTransitionSettings(settings)
+    }
+  }
+  if (aboutTransitionEffect) aboutTransitionEffect.addEventListener('change', liveApplyAboutTransition)
+  if (aboutTransitionSpeed) {
+    aboutTransitionSpeed.addEventListener('input', () => {
+      const v = parseFloat(aboutTransitionSpeed.value)
+      if (aboutTransitionSpeedLbl) aboutTransitionSpeedLbl.textContent = `${v.toFixed(2)}×`
+      liveApplyAboutTransition()
+    })
+  }
 
   // About photo upload
   if (aboutPhotoInput) {

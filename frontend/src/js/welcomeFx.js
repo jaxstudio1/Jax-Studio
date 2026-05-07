@@ -161,3 +161,57 @@ export const playWelcomeExit = () => {
   if (_subWord) promises.push(_subWord.hide(effect.hide))
   return Promise.all(promises)
 }
+
+/* --- About transition (welcome → about and back) ---
+   Reuses the existing _headingWord / _subWord instances but swaps the effect
+   only for the duration of the animation. The Word's split-letter DOM stays
+   identical (effects only differ in animation params), so we can hide/show
+   with any preset's config without rebuilding. */
+let _aboutTransition = { effectName: null, speedMul: 1.0 }
+
+export const setAboutTransitionSettings = (settings = {}) => {
+  _aboutTransition.effectName = settings.about_transition_effect || null
+  _aboutTransition.speedMul = typeof settings.about_transition_speed === 'number'
+    ? settings.about_transition_speed : 1.0
+}
+
+const resolveAboutEffect = () => {
+  // Use the dedicated about-transition effect if set, otherwise fall back to
+  // whatever the welcome heading is currently configured with.
+  const name = _aboutTransition.effectName || _state.effectName
+  if (!name) return null
+  const preset = PRESET_BY_NAME[name]
+  if (!preset) return null
+  const overrides = {
+    speedMul: _aboutTransition.effectName ? _aboutTransition.speedMul : _state.speedMul,
+    stagger: _state.staggerMs > 0 ? _state.staggerMs : null,
+    shapeTypes: resolveShapeTypes(_state.shapesMode),
+    shapeFill: _state.fill,
+    density: _state.density,
+  }
+  if (_state.useAccent) {
+    const accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#ff5722').trim()
+    overrides.shapeColors = [accent, '#ffffff', '#1a1a1c']
+  }
+  return customizeEffect(preset, overrides)
+}
+
+/** Run the about-transition EXIT animation on the welcome letters. */
+export const playAboutExit = () => {
+  const effect = resolveAboutEffect()
+  if (!effect || !effect.hide) return Promise.resolve()
+  const promises = []
+  if (_headingWord) promises.push(_headingWord.hide(effect.hide))
+  if (_subWord) promises.push(_subWord.hide(effect.hide))
+  return Promise.all(promises)
+}
+
+/** Run the about-transition ENTRANCE animation on the welcome letters. */
+export const playAboutEntrance = () => {
+  const effect = resolveAboutEffect()
+  if (!effect || !effect.show) return Promise.resolve()
+  const promises = []
+  if (_headingWord) promises.push(_headingWord.show(effect.show))
+  if (_subWord) promises.push(_subWord.show(effect.show))
+  return Promise.all(promises)
+}

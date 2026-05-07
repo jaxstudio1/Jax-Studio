@@ -143,6 +143,101 @@ class TestAboutSettings:
         assert r.status_code == 422
 
 
+# ---------------- Welcome→About transition fields (NEW) ----------------
+class TestAboutTransitionSettings:
+    """about_transition_effect (one of 9 codrops names | null) +
+       about_transition_speed (0.5–2.0 | null) round-trip + validation."""
+
+    VALID_EFFECTS = [
+        "Eurhythmic", "Aquarius", "Lycanthropy", "Wonderland", "Screenager",
+        "Callipygian", "Eviternity", "Jumbuck", "Babooner",
+    ]
+
+    def test_get_settings_exposes_new_fields_publicly(self, api):
+        r = api.get(f"{BASE_URL}/api/settings")
+        assert r.status_code == 200
+        data = r.json()
+        assert "about_transition_effect" in data, "Public GET missing about_transition_effect"
+        assert "about_transition_speed" in data, "Public GET missing about_transition_speed"
+
+    def test_put_valid_transition_effect_and_speed_roundtrip(self, auth_headers, api):
+        payload = {"about_transition_effect": "Wonderland", "about_transition_speed": 1.25}
+        r = requests.put(f"{BASE_URL}/api/admin/settings", json=payload, headers=auth_headers)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["about_transition_effect"] == "Wonderland"
+        assert abs(data["about_transition_speed"] - 1.25) < 1e-6
+
+        # Public GET reflects values
+        pub = api.get(f"{BASE_URL}/api/settings").json()
+        assert pub["about_transition_effect"] == "Wonderland"
+        assert abs(pub["about_transition_speed"] - 1.25) < 1e-6
+
+    def test_put_all_nine_effects_accepted(self, auth_headers):
+        for eff in self.VALID_EFFECTS:
+            r = requests.put(f"{BASE_URL}/api/admin/settings",
+                             json={"about_transition_effect": eff}, headers=auth_headers)
+            assert r.status_code == 200, f"{eff} rejected: {r.text}"
+            assert r.json()["about_transition_effect"] == eff
+
+    def test_put_invalid_transition_effect_rejected(self, auth_headers):
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"about_transition_effect": "NotARealEffect"}, headers=auth_headers)
+        assert r.status_code == 422
+
+    def test_put_speed_below_range_rejected(self, auth_headers):
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"about_transition_speed": 0.4}, headers=auth_headers)
+        assert r.status_code == 422
+
+    def test_put_speed_above_range_rejected(self, auth_headers):
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"about_transition_speed": 2.1}, headers=auth_headers)
+        assert r.status_code == 422
+
+    def test_put_speed_boundaries_accepted(self, auth_headers):
+        for v in (0.5, 2.0):
+            r = requests.put(f"{BASE_URL}/api/admin/settings",
+                             json={"about_transition_speed": v}, headers=auth_headers)
+            assert r.status_code == 200, f"speed {v} rejected: {r.text}"
+            assert abs(r.json()["about_transition_speed"] - v) < 1e-6
+
+    def test_reset_clears_new_fields_to_none(self, auth_headers, api):
+        # First set both fields
+        requests.put(f"{BASE_URL}/api/admin/settings",
+                     json={"about_transition_effect": "Aquarius",
+                           "about_transition_speed": 1.5},
+                     headers=auth_headers)
+        # Reset
+        r = requests.post(f"{BASE_URL}/api/admin/settings/reset", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data.get("about_transition_effect") is None
+        assert data.get("about_transition_speed") is None
+
+        # Public GET also null
+        pub = api.get(f"{BASE_URL}/api/settings").json()
+        assert pub.get("about_transition_effect") is None
+        assert pub.get("about_transition_speed") is None
+
+    def test_put_null_partial_update_keeps_existing(self, auth_headers):
+        """Partial PUT with null should NOT override existing values (exclude_none behavior).
+        The proper way to clear is POST /api/admin/settings/reset (covered above)."""
+        # set values
+        requests.put(f"{BASE_URL}/api/admin/settings",
+                     json={"about_transition_effect": "Babooner",
+                           "about_transition_speed": 1.1},
+                     headers=auth_headers)
+        # partial PUT with nulls — should preserve previously-set values
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"about_transition_effect": None,
+                               "about_transition_speed": None},
+                         headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["about_transition_effect"] == "Babooner"
+        assert abs(r.json()["about_transition_speed"] - 1.1) < 1e-6
+
+
 # ---------------- About photo upload ----------------
 class TestAboutUpload:
     @staticmethod

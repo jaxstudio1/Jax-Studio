@@ -201,6 +201,9 @@ class Settings(BaseModel):
     about_years: Optional[int] = None
     about_skills: Optional[List[dict]] = None  # [{name, pct}]
     about_tools: Optional[List[str]] = None
+    # About transition (welcome → about) — can override the welcome entrance effect
+    about_transition_effect: Optional[str] = None  # null = same as welcome_letter_effect
+    about_transition_speed: Optional[float] = None # 0.5–2.0, default 1.0
     updated_at: Optional[str] = None
 
 
@@ -244,6 +247,17 @@ class SettingsUpdate(BaseModel):
     about_years: Optional[int] = Field(default=None, ge=0, le=99)
     about_skills: Optional[List[dict]] = Field(default=None)
     about_tools: Optional[List[str]] = Field(default=None)
+    about_transition_effect: Optional[str] = Field(default=None, max_length=40)
+    about_transition_speed: Optional[float] = Field(default=None, ge=0.5, le=2.0)
+
+    @field_validator('about_transition_effect')
+    @classmethod
+    def _about_effect(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in ALLOWED_LETTER_EFFECTS:
+            raise ValueError(f"about_transition_effect must be one of: {sorted(ALLOWED_LETTER_EFFECTS)}")
+        return v
 
     @field_validator('welcome_letter_effect')
     @classmethod
@@ -658,6 +672,7 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "about_eyebrow": None, "about_heading_pre": None, "about_heading_emphasis": None,
             "about_body": None, "about_photo_url": None, "about_person_name": None,
             "about_person_role": None, "about_years": None, "about_skills": None, "about_tools": None,
+            "about_transition_effect": None, "about_transition_speed": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},
         upsert=True,

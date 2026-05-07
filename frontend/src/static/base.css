@@ -549,20 +549,14 @@ main {
 }
 
 /* About-section back button — sits LOWER (below the JAX STUDIO brand) so it
-   doesn't visually collide with the top-left frame title. Reuses the
-   .projects__back base styling but overrides position. */
+   doesn't visually collide with the top-left frame title. */
 .about .projects__back { top: 5.6rem; left: 2.6rem; }
 @media (max-width: 720px) { .about .projects__back { top: 5rem; left: 1.4rem; } }
 
-/* === When the user is on the About route, the welcome overlay STAYS fixed
-   at the top of the viewport (z-index 50). The About section sits below it
-   in the document (margin-top: 100vh) with a HIGHER z-index so it scrolls
-   up OVER the fixed welcome — letting the user scroll back up to revisit
-   the welcome view at any time. */
-body.is-scrollable .about.is-active {
-  margin-top: 100vh;
-  z-index: 60;
-}
+/* === About is a FIXED full-viewport overlay that fades in OVER the welcome.
+   The welcome stays in DOM behind it (faded via .is-faded). When the user
+   scrolls back up to the top of about and wheels up, About fades out and
+   the welcome's letter-FX entrance plays again. */
 html.is-scrollable,
 body.is-scrollable {
   overflow-y: auto !important;
@@ -706,14 +700,23 @@ body.is-scrollable .content { touch-action: auto; }
 
 /* === About section === */
 .about {
-  position: relative;
-  z-index: 5;
+  position: fixed;
+  inset: 0;
+  z-index: 70; /* above welcome (50) — fades in over it */
   background: var(--color-bg);
   padding: 7rem 1.5rem 6rem;
-  min-height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
   display: none;
 }
 .about.is-active { display: block; }
+.about.is-active.is-fading-in { opacity: 1; pointer-events: auto; }
+
+/* Welcome overlay fade-out while about takes over */
+.welcome-overlay.is-faded { opacity: 0 !important; pointer-events: none; }
 .about__inner { max-width: 1280px; margin: 0 auto; }
 .about__head { margin-bottom: 4rem; max-width: 980px; }
 .about__eyebrow {

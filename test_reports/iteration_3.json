@@ -1,0 +1,50 @@
+{
+  "summary": "Verified the Welcome→About DecorativeLetterAnimations transition feature end-to-end. Backend: 35/35 pytest pass (added 9 new tests for about_transition_effect/about_transition_speed covering all 9 codrops effects, validation 422s, public GET exposure, reset clears to null, partial-PUT-null preserves existing). Frontend: cube→welcome→letter-FX-exit→about-fade-in works (welcome gains is-faded opacity 0, about gains is-active is-fading-in opacity 1 z-index 70 position fixed); wheel-up at top of about reverses (welcome opacity 1, about loses is-active and goes to opacity 0); Past Projects flow still 6 cards; Admin Page 5 has new transition effect dropdown (10 options: empty + 9 codrops names) and speed slider (0.5–2.0, step 0.05); live preview fires window.__welcomeFx.setAboutTransitionSettings on every dropdown/slider change; Publish saves to backend and GET /api/settings reflects values; speed value label updates as '1.50×'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_behaviors": {
+    "welcome_fx_exposes_setAboutTransitionSettings": "window.__welcomeFx keys = ['applyWelcomeLetterFxSettings','setAboutTransitionSettings']",
+    "scroll_to_about_transition": "After click [data-testid='welcome-scroll']: welcome class='welcome-overlay is-active is-revealed is-faded' opacity=0, about class='about is-active is-fading-in' opacity=1 z-index=70 position=fixed",
+    "wheel_up_reverses": "After dispatching wheel deltaY=-50 at about.scrollTop=0: welcome class='welcome-overlay is-active is-revealed' opacity=1 (is-faded removed), about class='about' opacity=0 (is-active+is-fading-in removed)",
+    "past_projects": "6 cards rendered, .projects active",
+    "admin_page5_transition_section": "[data-testid='admin-about-transition-effect'] dropdown has 10 options: empty + Eurhythmic, Aquarius, Lycanthropy, Wonderland, Screenager, Callipygian, Eviternity, Jumbuck, Babooner; [data-testid='admin-about-transition-speed'] range min=0.5 max=2.0 step=0.05 default=1",
+    "live_preview_fires": "Two captured calls to setAboutTransitionSettings: ({effect:'Wonderland',speed:1}) on dropdown change then ({effect:'Wonderland',speed:1.5}) on slider change — no Publish required",
+    "speed_value_label": "Updates live to '1.50×' as slider moves",
+    "publish_persists": "After Publish: GET /api/settings → about_transition_effect='Wonderland', about_transition_speed=1.5",
+    "reset_clears_new_fields": "POST /api/admin/settings/reset → about_transition_effect=None, about_transition_speed=None"
+  },
+  "backend_test_coverage_added": [
+    "TestAboutTransitionSettings::test_get_settings_exposes_new_fields_publicly",
+    "TestAboutTransitionSettings::test_put_valid_transition_effect_and_speed_roundtrip",
+    "TestAboutTransitionSettings::test_put_all_nine_effects_accepted (9 codrops names)",
+    "TestAboutTransitionSettings::test_put_invalid_transition_effect_rejected (422)",
+    "TestAboutTransitionSettings::test_put_speed_below_range_rejected (0.4 → 422)",
+    "TestAboutTransitionSettings::test_put_speed_above_range_rejected (2.1 → 422)",
+    "TestAboutTransitionSettings::test_put_speed_boundaries_accepted (0.5 and 2.0)",
+    "TestAboutTransitionSettings::test_reset_clears_new_fields_to_none",
+    "TestAboutTransitionSettings::test_put_null_partial_update_keeps_existing"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_backend_api.py",
+    "/app/backend/tests/test_webhook_signature.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PUT /api/admin/settings with explicit null does NOT clear an existing value (partial-update semantic via exclude_none). Reset is the only way to clear about_transition_effect/about_transition_speed. This is a deliberate design choice but worth documenting in the README — a consumer might expect explicit null to clear.",
+    "/app/frontend/src/js/index.js continues to grow; modularising welcome/about/projects/admin into separate ES modules is recommended for long-term maintainability (carry-over comment from iter_2)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_backend_api.py (+9 new test functions in new TestAboutTransitionSettings class)"
+  ],
+  "success_rate": {"backend": "100% (35/35 pytest)", "frontend": "100% on all requested flows (welcome FX exit, about fade-in, reverse, admin live preview, publish round-trip)"},
+  "test_credentials": "Admin password 'jaxstudio2026' (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "During admin tests Wonderland/1.5 was published to settings; cleaned up via POST /api/admin/settings/reset (verified about_transition_effect=None, about_transition_speed=None at end).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "ALLOWED_LETTER_EFFECTS lives at /app/backend/server.py:151. New fields about_transition_effect (str|null in 9 codrops names) and about_transition_speed (float 0.5-2.0|null) are validated by SettingsUpdate at lines ~253-263. Frontend admin Page 5 dropdown testid='admin-about-transition-effect', slider testid='admin-about-transition-speed', live-value label testid='admin-about-transition-speed-value'. window.__welcomeFx.setAboutTransitionSettings({about_transition_effect, about_transition_speed}) is the live-preview hook. Wheel-up to reverse requires about.scrollTop ≤ 2 AND deltaY < -10 dispatched on .about__scroll (or .about). PUT-with-null is a no-op (preserves existing value); only POST /api/admin/settings/reset clears new fields."
+}

@@ -12,7 +12,7 @@ import cube, {Types as CubeTypes, Faces as CubeFaces, Masks as CubeMasks} from '
 import content, {Types as ContentTypes} from '~js/components/content'
 import reflection from '~js/components/reflection'
 import {initAdmin} from '~js/admin'
-import {applyWelcomeLetterFxSettings, playWelcomeEntrance, playWelcomeExit} from '~js/welcomeFx'
+import {applyWelcomeLetterFxSettings, playWelcomeEntrance, playWelcomeExit, setAboutTransitionSettings, playAboutExit, playAboutEntrance} from '~js/welcomeFx'
 import {fetchAndRenderProjects, revealProjectsSection, hideProjectsSection} from '~js/projects'
 import {applyAboutSettings, revealAboutSection, hideAboutSection} from '~js/about'
 
@@ -293,23 +293,42 @@ const _exitOverlay = async () => {
   return true
 }
 
-// Scroll → goes to ABOUT. We do NOT slide the welcome overlay off-screen.
-// The welcome overlay stays `position: fixed` at the top, and the About
-// section sits below in document flow (margin-top: 100vh, z-index higher)
-// so it scrolls UP OVER the welcome. Result: user can scroll back up at any
-// time to revisit the welcome view.
+// Scroll → goes to ABOUT.
+// Plays the DecorativeLetterAnimations EXIT animation on the welcome heading
+// (using `about_transition_effect` if set, else falls back to the welcome
+// entrance effect), then fades the welcome out and the About section in.
+// Scrolling back up at the top of About reverses the whole thing
+// (DecorativeLetterAnimations ENTRANCE re-plays).
 const goToAbout = async () => {
   if (_scrolling) return
   _scrolling = true
   hideProjectsSection()
-  overlay.classList.remove('is-scrolling-out', 'is-exiting', 'is-pinned')
-  document.documentElement.classList.add('is-scrollable')
-  document.body.classList.add('is-scrollable')
+  overlay.classList.remove('is-scrolling-out', 'is-pinned')
+  overlay.classList.add('is-exiting')
+  try { await playAboutExit() } catch (_) {}
+  overlay.classList.remove('is-exiting')
+  overlay.classList.add('is-faded')
   revealAboutSection()
   if (window.history && window.history.pushState) {
     try { window.history.pushState({ route: 'about' }, '', '#about') } catch (_) {}
   }
-  setTimeout(() => { _scrolling = false }, 300)
+  setTimeout(() => { _scrolling = false }, 400)
+}
+
+// Reverse — scroll back up at top of about → fade about out, restore welcome,
+// re-play letter ENTRANCE.
+const goBackToWelcome = async () => {
+  if (_scrolling) return
+  _scrolling = true
+  hideAboutSection()
+  // Wait for about's fade-out
+  await new Promise((res) => setTimeout(res, 600))
+  overlay.classList.remove('is-faded')
+  try { await playAboutEntrance() } catch (_) {}
+  if (window.history && window.history.pushState) {
+    try { window.history.pushState({ route: 'home' }, '', window.location.pathname) } catch (_) {}
+  }
+  setTimeout(() => { _scrolling = false }, 200)
 }
 
 // "Past Projects" button → dedicated route.
@@ -325,21 +344,18 @@ const goToProjects = async () => {
 
 // Back button on welcome — animate to cube
 const backToCube = () => {
-  // If we're in scroll-mode (about route), treat back as full-home reset
-  if (document.body.classList.contains('is-scrollable')) {
-    backToHome()
-    return
-  }
-  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
+  // The welcome's small back arrow only fires when the welcome is the active
+  // overlay (cube state). On the about route the about-back button is used.
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
   if (hintEl) hintEl.style.opacity = ''
   playWelcomeExit().catch(() => {})
 }
 
-// Back button on projects — return to home (cube + welcome state cleared)
+// Back button on projects/about — return to home (cube + welcome dismissed)
 const backToHome = () => {
   hideProjectsSection()
   hideAboutSection()
-  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting', 'is-faded', 'is-pinned')
   document.documentElement.classList.remove('is-scrollable')
   document.body.classList.remove('is-scrollable')
   if (hintEl) hintEl.style.opacity = ''
@@ -358,28 +374,59 @@ if (scrollBtn) scrollBtn.addEventListener('click', goToAbout)
 if (projectsBtn) projectsBtn.addEventListener('click', goToProjects)
 if (welcomeBackBtn) welcomeBackBtn.addEventListener('click', backToCube)
 if (projectsBackBtn) projectsBackBtn.addEventListener('click', backToHome)
-if (aboutBackBtn) aboutBackBtn.addEventListener('click', backToHome)
+if (aboutBackBtn) aboutBackBtn.addEventListener('click', goBackToWelcome)
+
+// Wheel-up at the very top of the About overlay → reverse back to welcome
+// (DecorativeLetterAnimations ENTRANCE plays). The about element is itself
+// the scroll container (overflow-y: auto), so we listen on it.
+const aboutEl = document.querySelector('[data-testid="about-section"]')
+if (aboutEl) {
+  let _aboutWheelArmed = false
+  aboutEl.addEventListener('wheel', (e) => {
+    if (!aboutEl.classList.contains('is-active')) return
+    if (_scrolling) return
+    if (aboutEl.scrollTop <= 2 && e.deltaY < -10 && !_aboutWheelArmed) {
+      _aboutWheelArmed = true
+      setTimeout(() => { _aboutWheelArmed = false }, 800)
+      goBackToWelcome()
+    }
+  }, { passive: true })
+
+  // Touch swipe-down at top of about → same reverse
+  let _aboutTouchY = null
+  aboutEl.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length > 0) _aboutTouchY = e.touches[0].clientY
+  }, { passive: true })
+  aboutEl.addEventListener('touchmove', (e) => {
+    if (_aboutTouchY == null) return
+    if (!aboutEl.classList.contains('is-active')) return
+    if (_scrolling) return
+    if (aboutEl.scrollTop > 2) return
+    const dy = (e.touches && e.touches[0] ? e.touches[0].clientY : _aboutTouchY) - _aboutTouchY
+    if (dy > 50) {
+      _aboutTouchY = null
+      goBackToWelcome()
+    }
+  }, { passive: true })
+}
 
 // Hash-deeplink — open /projects or /about directly
 window.addEventListener('popstate', (e) => {
   const hash = (window.location.hash || '').replace('#', '')
   if (hash === 'projects') {
     hideAboutSection()
-    overlay.classList.remove('is-pinned')
+    overlay.classList.remove('is-faded')
     revealProjectsSection()
   }
   else if (hash === 'about') {
     hideProjectsSection()
-    overlay.classList.remove('is-pinned')
-    overlay.classList.add('is-active', 'is-revealed')
-    document.documentElement.classList.add('is-scrollable')
-    document.body.classList.add('is-scrollable')
+    overlay.classList.add('is-active', 'is-revealed', 'is-faded')
     revealAboutSection()
   }
   else {
     hideProjectsSection()
     hideAboutSection()
-    overlay.classList.remove('is-pinned', 'is-active', 'is-revealed')
+    overlay.classList.remove('is-active', 'is-revealed', 'is-faded')
     document.body.classList.remove('is-scrollable')
     document.documentElement.classList.remove('is-scrollable')
     window.scrollTo({ top: 0 })
@@ -396,9 +443,8 @@ const armWheel = () => {
 window.addEventListener('wheel', (e) => {
   if (!overlay.classList.contains('is-revealed')) return
   if (overlay.classList.contains('is-scrolling-out')) return
-  // Once we're on the About route (body is-scrollable), let the page scroll
-  // naturally between welcome and About — don't re-trigger goToAbout.
-  if (document.body.classList.contains('is-scrollable')) return
+  // Don't double-fire while welcome is faded (about is on top)
+  if (overlay.classList.contains('is-faded')) return
   const thresh = (window.__motion && window.__motion.wheelThresh) || 12
   if (e.deltaY > thresh) {
     armWheel()
@@ -416,8 +462,7 @@ overlay.addEventListener('touchmove', (e) => {
   if (_touchStartY == null) return
   if (!overlay.classList.contains('is-revealed')) return
   if (overlay.classList.contains('is-scrolling-out')) return
-  // On the About route — let native touch scrolling work between welcome and about
-  if (document.body.classList.contains('is-scrollable')) return
+  if (overlay.classList.contains('is-faded')) return
   const dy = _touchStartY - (e.touches && e.touches[0] ? e.touches[0].clientY : _touchStartY)
   const thresh = (window.__motion && window.__motion.swipeThresh) || 36
   if (dy > thresh) {
@@ -428,7 +473,7 @@ overlay.addEventListener('touchmove', (e) => {
 overlay.addEventListener('touchend', () => { _touchStartY = null }, { passive: true })
 
 // Public API for admin live-preview & published settings
-window.__welcomeFx = { applyWelcomeLetterFxSettings }
+window.__welcomeFx = { applyWelcomeLetterFxSettings, setAboutTransitionSettings }
 window.__projects = { fetchAndRenderProjects }
 window.__about = { applyAboutSettings }
 
@@ -439,20 +484,17 @@ fetchAndRenderProjects()
     const res = await fetch('/api/settings')
     const s = await res.json()
     applyAboutSettings(s)
+    setAboutTransitionSettings(s)
   } catch (e) {}
 })()
 
 // Hash-deeplink on initial load
 const _initialHash = (window.location.hash || '').replace('#', '')
 if (_initialHash === 'projects') {
-  // Hide overlay completely so projects route is the landing
-  overlay.classList.remove('is-active', 'is-revealed', 'is-pinned')
+  overlay.classList.remove('is-active', 'is-revealed', 'is-pinned', 'is-faded')
   setTimeout(() => revealProjectsSection(), 100)
 } else if (_initialHash === 'about') {
-  // Show welcome AND about — user can scroll between them
-  overlay.classList.add('is-active', 'is-revealed')
-  document.documentElement.classList.add('is-scrollable')
-  document.body.classList.add('is-scrollable')
+  overlay.classList.add('is-active', 'is-revealed', 'is-faded')
   setTimeout(() => revealAboutSection(), 100)
 }
 

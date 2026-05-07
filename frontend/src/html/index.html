@@ -627,6 +627,30 @@ Typography : 92"></textarea>
               <p class="admin-section__hint">Comma-separated.</p>
               <textarea rows="3" data-testid="admin-about-tools" class="admin-cube-text" placeholder="Figma, Illustrator, Photoshop"></textarea>
             </section>
+
+            <section class="admin-section">
+              <h3 class="admin-section__title">Welcome → About transition</h3>
+              <p class="admin-section__hint">DecorativeLetterAnimation that plays when scrolling from the welcome view to the About section. Reverses when scrolling back up.</p>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Effect</span>
+                <select data-testid="admin-about-transition-effect">
+                  <option value="">Same as welcome entrance (default)</option>
+                  <option value="Eurhythmic">Eurhythmic</option>
+                  <option value="Aquarius">Aquarius</option>
+                  <option value="Lycanthropy">Lycanthropy</option>
+                  <option value="Wonderland">Wonderland</option>
+                  <option value="Screenager">Screenager</option>
+                  <option value="Callipygian">Callipygian</option>
+                  <option value="Eviternity">Eviternity</option>
+                  <option value="Jumbuck">Jumbuck</option>
+                  <option value="Babooner">Babooner</option>
+                </select>
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Speed <span class="admin-slider__value" data-testid="admin-about-transition-speed-value">1.00×</span></span>
+                <input type="range" min="0.5" max="2.0" step="0.05" value="1.0" data-testid="admin-about-transition-speed" />
+              </label>
+            </section>
           </div><!-- /page 5 -->
         </div>
 
