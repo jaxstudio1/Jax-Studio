@@ -19,7 +19,17 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
-### Phase 14.6 (Feb 2026) — Hybrid continuous scroll + threshold-triggered DecorativeLetterAnimations
+### Phase 14.8 (Feb 2026) — Site Access switch + Padlock-only Admin launcher
+User feedback: "in the control panel add a access switch at the top. This would control whether or not they can access the page after clicking the cube. when access switch is off 'click the cube' should not be visible. i want the admin button visible throughout the page. I want it just as the pad lock and when i move my mouse over it reveals the text 'admin' like how it originally looks."
+
+- **Site Access switch** — new `access_enabled` field on `Settings` (validated bool, default `True`). Persistent bar at the top of the admin panel header (above all 5 pages). iOS-style toggle with live status label ("Visitors can enter" / "Site is locked"). Instant save on change — no Publish required. When OFF: `body.site-locked` class is added, the `.hint` ("click the cube") is hidden via inline `display: none`, and clicking the cube does NOT trigger the welcome overlay (gated in both `.content` click and `touchend` handlers via the `_accessEnabled` flag).
+- **Admin launcher redesigned** — collapsed by default (only the padlock icon visible, label has `max-width: 0; opacity: 0`); CSS `:hover` + `:focus-visible` expands it (`max-width: 80px; opacity: 1`) with a 0.35 s cubic-bezier transition. The `padding-right` also widens slightly so the label doesn't crowd the icon.
+- **Persistent visibility** — launcher z-index bumped from 12 to **80** so it stays visible above the welcome overlay (50) and the about section (70). Verified visible (display:flex, opacity:1, in viewport) at cube/welcome/about/projects routes.
+- **TDZ bug fix** — `window.__access = { setAccessEnabled }` was previously assigned BEFORE the `const setAccessEnabled = ...` declaration, leading to the bundled output capturing `undefined` (webpack doesn't hoist `const` initializers). Moved the exposure to immediately after the const so it's TDZ-safe.
+
+**Test coverage**: 38/38 backend pytest pass — added new `TestAccessEnabled` class with 6 tests (public GET exposure, PUT True/False round-trip, reset, exclude_none preserves existing, type-coercion). Frontend e2e verified by `testing_agent_v3_fork` — TDZ fix, launcher z-index/collapse/CSS-hover-rule, access toggle instant-save + cube-click gate + hint hide + body class.
+
+
 User feedback: "I'm seeing the cube flash at some instances when I scroll back to the welcome. Do a Hybrid (continuous scroll + letter FX triggers as you cross the threshold)."
 - **Continuous scroll layout** — Welcome is `position: fixed; z-index: 50` covering the first viewport; About is `position: relative; margin-top: 100vh; z-index: 70` flowing below. Document height = 200vh (welcome + about). Body becomes `is-scrollable` automatically ~600 ms after the welcome entrance completes.
 - **Threshold-driven letter FX** — A single `window.scroll` listener (rAF-debounced) plays `playAboutExit()` once when scrollY crosses **30 vh** (welcome heading letters + decorative shapes scatter), and plays `playAboutEntrance()` once when scrolling back below **10 vh**. The trigger uses an internal `_aboutFxState` flag so each direction fires once per crossing.
