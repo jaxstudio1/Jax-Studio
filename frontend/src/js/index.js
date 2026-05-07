@@ -280,10 +280,14 @@ let _scrolling = false
 const _exitOverlay = async () => {
   if (_scrolling) return false
   _scrolling = true
+  // Add is-exiting BEFORE the letter-FX exit so the static "Welcome to" + "!"
+  // (and sub-heading) animate out in sync with the letter swirl, rather than
+  // sitting frozen until the parent slides up.
+  overlay.classList.add('is-exiting')
   try { await playWelcomeExit() } catch (_) {}
   overlay.classList.add('is-scrolling-out')
   setTimeout(() => {
-    overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
+    overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
     _scrolling = false
   }, 950)
   return true
@@ -334,10 +338,12 @@ const scrollBtn = overlay.querySelector('[data-testid="welcome-scroll"]')
 const projectsBtn = overlay.querySelector('[data-testid="welcome-projects-btn"]')
 const welcomeBackBtn = overlay.querySelector('[data-testid="welcome-close"]')
 const projectsBackBtn = document.querySelector('[data-testid="projects-back"]')
+const aboutBackBtn = document.querySelector('[data-testid="about-back"]')
 if (scrollBtn) scrollBtn.addEventListener('click', goToAbout)
 if (projectsBtn) projectsBtn.addEventListener('click', goToProjects)
 if (welcomeBackBtn) welcomeBackBtn.addEventListener('click', backToCube)
 if (projectsBackBtn) projectsBackBtn.addEventListener('click', backToHome)
+if (aboutBackBtn) aboutBackBtn.addEventListener('click', backToHome)
 
 // Hash-deeplink — open /projects or /about directly
 window.addEventListener('popstate', (e) => {
