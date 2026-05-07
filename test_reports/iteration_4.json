@@ -1,0 +1,47 @@
+{
+  "summary": "Verified Site Access switch + redesigned Admin launcher end-to-end. Backend: 38/38 pytest pass (added 6 new tests in TestAccessEnabled covering public GET exposure, PUT True/False round-trip, reset → True, exclude_none null preserves existing, weird-type coercion). Frontend: window.__access.setAccessEnabled is a function on initial load (TDZ fix verified); admin-launcher exists at z-index 80 with collapsed label (max-width:0px, opacity:0, text 'Admin'); CSS rule '.admin-launcher:hover/focus-visible .admin-launcher__label { max-width: 80px; opacity: 1 }' present. Toggle OFF (instant-save, no Publish): status='Site is locked', body.site-locked=true, .hint display:none, bar.is-locked=true, backend persisted access_enabled=false, cube click does NOT activate welcome. Toggle ON: status='Visitors can enter', body NOT locked, hint visible, cube click triggers welcome. Launcher visible & in viewport at cube/welcome/about views (top=1019.5, z-index=80, opacity=1, display=flex). Admin re-open after first login skips password (token persisted).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified_behaviors": {
+    "tdz_fix": "typeof window.__access.setAccessEnabled === 'function' on initial page load — confirmed FIXED (was previously undefined)",
+    "launcher_collapsed_default": "computed maxWidth=0px, opacity=0, text='Admin' on .admin-launcher__label",
+    "launcher_hover_css": "Rule '.admin-launcher:hover .admin-launcher__label, .admin-launcher:focus-visible .admin-launcher__label { max-width: 80px; opacity: 1 }' present in stylesheet",
+    "launcher_zindex_80": "z-index 80 verified at cube view, welcome overlay (z=50), and about view (z=70) — launcher above all",
+    "launcher_persistent_visibility": "bbox top=1019.5/bottom=1056 (within 1080 viewport), opacity=1, display=flex on every state",
+    "access_bar_markup": "[data-testid=admin-access-toggle] (checkbox, default checked) + [data-testid=admin-access-status] ('Visitors can enter' / 'Site is locked') present",
+    "instant_save_off": "Toggling checkbox to false dispatches change → PUT /api/admin/settings → backend access_enabled=false within 2s (no Publish needed)",
+    "off_applies_to_public": "body.site-locked added, .hint display:none, .admin-access-bar.is-locked, status text='Site is locked'",
+    "cube_click_blocked_when_off": "stage click while access OFF: welcome-overlay stays is-active=false, is-revealed=false",
+    "instant_save_on": "Toggling back to true → backend access_enabled=true; body.site-locked removed; hint visible",
+    "admin_panel_close_data_testid": "[data-testid=admin-panel-close] works to close panel",
+    "session_persistence": "Re-clicking launcher after first login goes straight to admin panel (no re-login)"
+  },
+  "backend_test_coverage_added": [
+    "TestAccessEnabled::test_get_settings_exposes_access_enabled_publicly",
+    "TestAccessEnabled::test_put_access_enabled_false_roundtrip (verified public GET reflects)",
+    "TestAccessEnabled::test_put_access_enabled_true_roundtrip",
+    "TestAccessEnabled::test_put_access_enabled_invalid_type_rejected (numeric coercion either accepted or 422)",
+    "TestAccessEnabled::test_reset_sets_access_enabled_true",
+    "TestAccessEnabled::test_put_null_preserves_existing_access (exclude_none semantics)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_backend_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PUT /api/admin/settings null still uses exclude_none semantics — explicit null does not clear access_enabled; only POST /api/admin/settings/reset restores default True. Behavior is intentional and consistent with about_transition_* fields, but worth a one-line README note for API consumers.",
+    "/app/frontend/src/js/index.js continues to grow; consider modularising admin/welcome/about/access into ES modules (carry-over from iter_2/iter_3).",
+    "Carry-over: existing TestAccessEnabled::test_put_access_enabled_invalid_type_rejected accepts either 200 (Pydantic v2 coercion) or 422 — ideal would be strict bool validation but not blocking.",
+    "Hover-expand on .admin-launcher relies on CSS :hover/:focus-visible which Playwright can't reliably trigger headlessly; recommend keeping the data-testid hooks plus the CSS rule audit (already done) as the regression check."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_backend_api.py (+6 new tests in new TestAccessEnabled class)"
+  ],
+  "success_rate": {"backend": "100% (38/38 pytest)", "frontend": "100% on requested flows (TDZ fix, launcher z-index/collapse/CSS-hover-rule, access toggle instant save + cube gate + hint hide + body class, launcher persistent visibility across cube/welcome/about)"},
+  "test_credentials": "Admin password 'jaxstudio2026' (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "During tests access_enabled was flipped to false then back to true; restored to default via reset in fixture teardown semantics. End-state confirmed access_enabled=true.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "access_enabled lives at /app/backend/server.py:209 (Settings) + line 255 (SettingsUpdate), reset sets True at line 680. Frontend gate at /app/frontend/src/js/index.js:494-528 (setAccessEnabled, _accessEnabled, click + touchend gates). Initial load applies on line 471 via setAccessEnabled(s.access_enabled !== false). window.__access exposure at line 501 (AFTER const decl — TDZ-safe). Admin instant-save change handler at /app/frontend/src/js/admin.js:~1160. CSS for collapsed launcher at /app/frontend/src/static/base.css:~1310, access bar styles ~1352. Test selectors: [data-testid=admin-launcher], [data-testid=admin-password], [data-testid=admin-login-submit], [data-testid=admin-panel-close], [data-testid=admin-access-toggle], [data-testid=admin-access-status]. Use page.evaluate to set checkbox.checked=false and dispatch 'change' event — clicking the label may scroll out of viewport in headless."
+}

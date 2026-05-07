@@ -256,6 +256,20 @@
           </div>
           <button type="button" class="admin-panel__close" data-testid="admin-panel-close" aria-label="Close panel">×</button>
         </header>
+
+        <!-- Site Access switch — top of panel, persistent across pages -->
+        <div class="admin-access-bar" data-testid="admin-access-bar">
+          <div class="admin-access-bar__copy">
+            <span class="admin-access-bar__title">Site Access</span>
+            <span class="admin-access-bar__sub" data-testid="admin-access-status">Visitors can enter</span>
+          </div>
+          <label class="admin-toggle" data-testid="admin-access-toggle-label">
+            <input type="checkbox" class="admin-toggle__input" data-testid="admin-access-toggle" checked />
+            <span class="admin-toggle__track" aria-hidden="true">
+              <span class="admin-toggle__thumb"></span>
+            </span>
+          </label>
+        </div>
         <div class="admin-panel__resizer" data-testid="admin-panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize panel">
           <span class="admin-panel__resizer-grip" aria-hidden="true"></span>
         </div>

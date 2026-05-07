@@ -204,6 +204,9 @@ class Settings(BaseModel):
     # About transition (welcome → about) — can override the welcome entrance effect
     about_transition_effect: Optional[str] = None  # null = same as welcome_letter_effect
     about_transition_speed: Optional[float] = None # 0.5–2.0, default 1.0
+    # Site access — when False, visitors clicking the cube get no welcome.
+    # Admin can still access via the padlock launcher. Default True.
+    access_enabled: Optional[bool] = None
     updated_at: Optional[str] = None
 
 
@@ -249,6 +252,7 @@ class SettingsUpdate(BaseModel):
     about_tools: Optional[List[str]] = Field(default=None)
     about_transition_effect: Optional[str] = Field(default=None, max_length=40)
     about_transition_speed: Optional[float] = Field(default=None, ge=0.5, le=2.0)
+    access_enabled: Optional[bool] = Field(default=None)
 
     @field_validator('about_transition_effect')
     @classmethod
@@ -673,6 +677,7 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "about_body": None, "about_photo_url": None, "about_person_name": None,
             "about_person_role": None, "about_years": None, "about_skills": None, "about_tools": None,
             "about_transition_effect": None, "about_transition_speed": None,
+            "access_enabled": True,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},
         upsert=True,

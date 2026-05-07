@@ -305,6 +305,10 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const aboutTransitionEffect = $('[data-testid="admin-about-transition-effect"]')
   const aboutTransitionSpeed = $('[data-testid="admin-about-transition-speed"]')
   const aboutTransitionSpeedLbl = $('[data-testid="admin-about-transition-speed-value"]')
+  // Site access switch (top of panel, persistent across pages)
+  const accessToggle = $('[data-testid="admin-access-toggle"]')
+  const accessStatus = $('[data-testid="admin-access-status"]')
+  const accessBar = $('[data-testid="admin-access-bar"]')
   const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
   const inputAccentHex = $('[data-testid="admin-accent-hex"]')
   const swatches = panel.querySelectorAll('.admin-color__swatch')
@@ -582,6 +586,12 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       aboutTransitionSpeed.value = String(v)
       if (aboutTransitionSpeedLbl) aboutTransitionSpeedLbl.textContent = `${v.toFixed(2)}×`
     }
+    // Site access — null/undefined means default true
+    if (accessToggle) {
+      const enabled = s.access_enabled !== false
+      accessToggle.checked = enabled
+      updateAccessBarUI(enabled)
+    }
     if (aboutPhotoPreview) {
       const url = s.about_photo_url
       if (url) {
@@ -666,7 +676,14 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     }
     if (aboutTransitionEffect) base.about_transition_effect = aboutTransitionEffect.value || null
     if (aboutTransitionSpeed) base.about_transition_speed = parseFloat(aboutTransitionSpeed.value)
+    if (accessToggle) base.access_enabled = !!accessToggle.checked
     return base
+  }
+
+  // ----- Access toggle UI helper -----
+  const updateAccessBarUI = (enabled) => {
+    if (accessStatus) accessStatus.textContent = enabled ? 'Visitors can enter' : 'Site is locked'
+    if (accessBar) accessBar.classList.toggle('is-locked', !enabled)
   }
 
   // ----- token / session -----
@@ -1137,6 +1154,30 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       const v = parseFloat(aboutTransitionSpeed.value)
       if (aboutTransitionSpeedLbl) aboutTransitionSpeedLbl.textContent = `${v.toFixed(2)}×`
       liveApplyAboutTransition()
+    })
+  }
+
+  // ---- Site access toggle (instant save + live apply) ----
+  if (accessToggle) {
+    accessToggle.addEventListener('change', async () => {
+      const enabled = !!accessToggle.checked
+      updateAccessBarUI(enabled)
+      // Live apply to the public site immediately
+      if (window.__access && typeof window.__access.setAccessEnabled === 'function') {
+        window.__access.setAccessEnabled(enabled)
+      }
+      // Persist
+      try {
+        await apiFetch('/api/admin/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ access_enabled: enabled }),
+        }, token)
+      } catch (e) {
+        // Revert UI on failure
+        accessToggle.checked = !enabled
+        updateAccessBarUI(!enabled)
+        if (window.__access) window.__access.setAccessEnabled(!enabled)
+      }
     })
   }
 

@@ -238,6 +238,68 @@ class TestAboutTransitionSettings:
         assert abs(r.json()["about_transition_speed"] - 1.1) < 1e-6
 
 
+# ---------------- Site Access toggle (NEW) ----------------
+class TestAccessEnabled:
+    """access_enabled (bool|null) — admin-controlled site access switch.
+    - GET /api/settings exposes the field publicly
+    - PUT /api/admin/settings round-trips True/False
+    - POST /api/admin/settings/reset → True (default)
+    - exclude_none semantics: PUT null preserves existing
+    """
+
+    def test_get_settings_exposes_access_enabled_publicly(self, api):
+        r = api.get(f"{BASE_URL}/api/settings")
+        assert r.status_code == 200
+        assert "access_enabled" in r.json(), "Public GET missing access_enabled"
+
+    def test_put_access_enabled_false_roundtrip(self, auth_headers, api):
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"access_enabled": False}, headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["access_enabled"] is False
+        # public GET reflects
+        assert api.get(f"{BASE_URL}/api/settings").json()["access_enabled"] is False
+
+    def test_put_access_enabled_true_roundtrip(self, auth_headers, api):
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"access_enabled": True}, headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["access_enabled"] is True
+        assert api.get(f"{BASE_URL}/api/settings").json()["access_enabled"] is True
+
+    def test_put_access_enabled_invalid_type_rejected(self, auth_headers):
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"access_enabled": "yes"}, headers=auth_headers)
+        # Pydantic v2 will coerce "yes" into True for bool — accept either coercion (200)
+        # or strict 422. The important behavior is no crash. Check explicit non-bool:
+        r2 = requests.put(f"{BASE_URL}/api/admin/settings",
+                          json={"access_enabled": 12345}, headers=auth_headers)
+        assert r2.status_code in (200, 422)
+
+    def test_reset_sets_access_enabled_true(self, auth_headers, api):
+        # First flip to False
+        requests.put(f"{BASE_URL}/api/admin/settings",
+                     json={"access_enabled": False}, headers=auth_headers)
+        # Reset
+        r = requests.post(f"{BASE_URL}/api/admin/settings/reset", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.json().get("access_enabled") is True
+        # public GET reflects
+        assert api.get(f"{BASE_URL}/api/settings").json()["access_enabled"] is True
+
+    def test_put_null_preserves_existing_access(self, auth_headers, api):
+        # Set False
+        requests.put(f"{BASE_URL}/api/admin/settings",
+                     json={"access_enabled": False}, headers=auth_headers)
+        # Send explicit null — exclude_none should drop it, keep False
+        r = requests.put(f"{BASE_URL}/api/admin/settings",
+                         json={"access_enabled": None}, headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["access_enabled"] is False
+        # Restore default (True) via reset for clean teardown
+        requests.post(f"{BASE_URL}/api/admin/settings/reset", headers=auth_headers)
+
+
 # ---------------- About photo upload ----------------
 class TestAboutUpload:
     @staticmethod

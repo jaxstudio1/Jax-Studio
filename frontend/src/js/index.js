@@ -468,6 +468,7 @@ fetchAndRenderProjects()
     const s = await res.json()
     applyAboutSettings(s)
     setAboutTransitionSettings(s)
+    setAccessEnabled(s.access_enabled !== false)
   } catch (e) {}
 })()
 
@@ -488,7 +489,19 @@ if (_initialHash === 'projects') {
   }, 100)
 }
 
+// Site access control — when disabled, cube clicks do nothing and the
+// "click the cube" hint is hidden. Toggled from admin Page top.
+let _accessEnabled = true
+const setAccessEnabled = (enabled) => {
+  _accessEnabled = enabled !== false  // null/undefined = allow (default)
+  if (hintEl) hintEl.style.display = _accessEnabled ? '' : 'none'
+  document.body.classList.toggle('site-locked', !_accessEnabled)
+}
+// Expose AFTER setAccessEnabled is declared (TDZ guard)
+window.__access = { setAccessEnabled }
+
 stageEl.addEventListener('click', (e) => {
+  if (!_accessEnabled) return
   triggerWelcome(e.clientX, e.clientY)
 })
 
@@ -508,7 +521,7 @@ stageEl.addEventListener('touchend', (e) => {
     const dx = Math.abs(last.clientX - touchStart.x)
     const dy = Math.abs(last.clientY - touchStart.y)
     if (dx < 12 && dy < 12) {
-      triggerWelcome(last.clientX, last.clientY)
+      if (_accessEnabled) triggerWelcome(last.clientX, last.clientY)
     }
   }
   touchStart = null

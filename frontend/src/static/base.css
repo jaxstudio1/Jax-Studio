@@ -1274,33 +1274,49 @@ body.is-scrollable .frame__admin { z-index: 50; }
   .admin-panel { width: 100% !important; }
 }
 
-/* -------- Admin launcher (bottom-left) -------- */
+/* -------- Admin launcher (bottom-left) — Padlock-only collapsed; hover reveals "Admin" -------- */
 .admin-launcher {
   position: fixed;
   bottom: 1.6rem;
   left: 1.6rem;
-  z-index: 12;
+  z-index: 80; /* above welcome (50) + about (70) so it's visible throughout */
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.55rem 0.95rem 0.55rem 0.75rem;
-  background: transparent;
+  padding: 0.55rem 0.75rem;
+  background: rgba(0,0,0,0.35);
   border: 1px solid var(--line);
-  color: #888;
+  color: #aaa;
   border-radius: 999px;
   cursor: pointer;
   font-family: var(--mono-font);
   font-size: 0.68rem;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease, padding 0.3s ease;
+}
+.admin-launcher__label {
+  max-width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
 }
 
-.admin-launcher:hover {
+.admin-launcher:hover,
+.admin-launcher:focus-visible {
   border-color: var(--line-strong);
   color: #fff;
-  background: rgba(255,255,255,0.04);
-  transform: translateY(-1px);
+  background: rgba(255,255,255,0.06);
+  padding-right: 0.95rem;
+}
+.admin-launcher:hover .admin-launcher__label,
+.admin-launcher:focus-visible .admin-launcher__label {
+  max-width: 80px;
+  opacity: 1;
 }
 
 .admin-launcher__icon {
@@ -1315,6 +1331,86 @@ body.is-scrollable .frame__admin { z-index: 50; }
 .admin-launcher.is-authed {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* -------- Site Access bar (top of admin panel) -------- */
+.admin-access-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.4rem;
+  margin: 0;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--line);
+}
+.admin-access-bar__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.admin-access-bar__title {
+  font-family: var(--mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.admin-access-bar__sub {
+  font-family: var(--mono-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: #888;
+  text-transform: uppercase;
+}
+.admin-access-bar.is-locked .admin-access-bar__sub { color: var(--accent); }
+
+/* iOS-style toggle switch */
+.admin-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.admin-toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.admin-toggle__track {
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #2a2a2c;
+  border: 1px solid var(--line);
+  position: relative;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.admin-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #888;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease;
+}
+.admin-toggle__input:checked + .admin-toggle__track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.admin-toggle__input:checked + .admin-toggle__track .admin-toggle__thumb {
+  transform: translateX(18px);
+  background: #fff;
+}
+.admin-toggle__input:focus-visible + .admin-toggle__track {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.18);
 }
 
 /* -------- Admin login modal — reuse contact-modal styles but in its own scope -------- */
