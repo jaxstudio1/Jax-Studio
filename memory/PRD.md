@@ -19,7 +19,15 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
-### Phase 14.8 (Feb 2026) — Site Access switch + Padlock-only Admin launcher
+### Phase 14.9 (Feb 2026) — No-flash settings hydration
+User feedback: "when i refresh the page i see the default colors for a split second before it saves. Also The values I have saved currently in the control panel make them the new default values."
+
+- **Inline `<head>` hydration script** runs BEFORE the main webpack bundle. Reads the last-known published settings from `localStorage.jaxStudio.publishedSettings.v1` and applies critical CSS custom properties (`--accent`, `--accent-soft`, `--gradient-a`, `--gradient-b`, `--gradient-angle`, `--display-font`, `--welcome-letter-spacing`, `--welcome-line-height`, `--ripple-speed`) IMMEDIATELY. On `DOMContentLoaded` it patches the brand title + tagline DOM and applies the `site-locked` state if access was disabled. Adds `body.settings-cached` once done.
+- **localStorage cache** is written by `bootstrapPublic` after every successful `/api/settings` fetch + after every Publish + Reset. So repeat visitors see their saved values from the very first paint — no flash of orange/Coming Soon.
+- **Opacity gate** for first-time visitors: `body { opacity: 0 }` by default, `body.settings-cached, body.settings-ready { opacity: 1 }` with a 0.35 s ease transition. Either class flips it on. So a first-time visitor sees a brief blank (~100-200ms) instead of a flash of the bundled defaults.
+- **Verified end-to-end**: published custom values (green accent, custom tagline) → reload → at 500 ms the body already has both `settings-cached` + `settings-ready`, accent is `#22c55e`, tagline is "Custom Tag", opacity is 1. Cleared localStorage → opacity stays at 0 at 100 ms (body hidden), reaches 1 by 1600 ms (faded in cleanly).
+
+
 User feedback: "in the control panel add a access switch at the top. This would control whether or not they can access the page after clicking the cube. when access switch is off 'click the cube' should not be visible. i want the admin button visible throughout the page. I want it just as the pad lock and when i move my mouse over it reveals the text 'admin' like how it originally looks."
 
 - **Site Access switch** — new `access_enabled` field on `Settings` (validated bool, default `True`). Persistent bar at the top of the admin panel header (above all 5 pages). iOS-style toggle with live status label ("Visitors can enter" / "Site is locked"). Instant save on change — no Publish required. When OFF: `body.site-locked` class is added, the `.hint` ("click the cube") is hidden via inline `display: none`, and clicking the cube does NOT trigger the welcome overlay (gated in both `.content` click and `touchend` handlers via the `_accessEnabled` flag).

@@ -54,6 +54,56 @@
     <script>
       document.documentElement.className = "js"
     </script>
+    <script>
+    /* INLINE SETTINGS HYDRATION — runs BEFORE main bundle to eliminate the
+       flash of default values on page refresh. Reads the last-known published
+       settings from localStorage (saved on every successful /api/settings
+       fetch) and applies critical CSS custom properties + brand text BEFORE
+       the first paint. */
+    (function () {
+      try {
+        var raw = localStorage.getItem('jaxStudio.publishedSettings.v1');
+        if (!raw) return;
+        var s = JSON.parse(raw);
+        var root = document.documentElement.style;
+        if (s.accent_color) {
+          root.setProperty('--accent', s.accent_color);
+          // Soft accent (18% alpha) — small inline alpha calc
+          var hex = s.accent_color.replace('#', '');
+          if (hex.length === 6) {
+            var r = parseInt(hex.slice(0, 2), 16);
+            var g = parseInt(hex.slice(2, 4), 16);
+            var b = parseInt(hex.slice(4, 6), 16);
+            root.setProperty('--accent-soft', 'rgba(' + r + ',' + g + ',' + b + ',0.18)');
+          }
+        }
+        if (s.gradient_color_a) root.setProperty('--gradient-a', s.gradient_color_a);
+        if (s.gradient_color_b) root.setProperty('--gradient-b', s.gradient_color_b);
+        if (typeof s.gradient_angle === 'number') root.setProperty('--gradient-angle', s.gradient_angle + 'deg');
+        if (s.cube_font) root.setProperty('--display-font', '"' + s.cube_font + '", system-ui, sans-serif');
+        if (typeof s.welcome_letter_spacing === 'number') root.setProperty('--welcome-letter-spacing', s.welcome_letter_spacing + 'em');
+        if (typeof s.welcome_line_height === 'number') root.setProperty('--welcome-line-height', s.welcome_line_height);
+        if (typeof s.ripple_speed === 'number') root.setProperty('--ripple-speed', s.ripple_speed);
+        // Mark body once DOM is ready so the brand-text patch can run too.
+        document.addEventListener('DOMContentLoaded', function () {
+          if (s.brand_title) {
+            var b = document.querySelector('[data-testid="brand-title"]');
+            if (b) b.textContent = s.brand_title;
+          }
+          if (s.brand_tagline) {
+            var t = document.querySelector('[data-testid="brand-tagline"]');
+            if (t) t.textContent = s.brand_tagline;
+          }
+          if (s.access_enabled === false) {
+            var h = document.querySelector('.hint');
+            if (h) h.style.display = 'none';
+            document.body.classList.add('site-locked');
+          }
+          document.body.classList.add('settings-cached');
+        });
+      } catch (e) { /* ignore — async fetch will still apply */ }
+    })();
+    </script>
   </head>
   <body class="demo-1">
     <main>

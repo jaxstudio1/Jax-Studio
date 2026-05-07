@@ -19,6 +19,22 @@
   --mono-font: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
+/* Settings hydration gate — see <head> inline script + admin.js bootstrapPublic.
+   The "settings-cached" class is added IMMEDIATELY (DOMContentLoaded) by the
+   hydration script when localStorage has cached settings — so repeat visitors
+   see their saved values from the very first paint, no flash of defaults.
+   "settings-ready" is added when the live /api/settings fetch completes. We
+   only fade-in if NEITHER class is present yet (first-time visitor) — this
+   gives them a brief 100-200ms blank instead of a flash of wrong defaults. */
+body {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+body.settings-cached,
+body.settings-ready {
+  opacity: 1;
+}
+
 html, body {
   margin: 0;
   padding: 0;

@@ -922,14 +922,24 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   } catch (_) { setActivePage(0) }
 
   // ----- public bootstrap (load published settings on page load) -----
+  const SETTINGS_CACHE_KEY = 'jaxStudio.publishedSettings.v1'
+  const cacheSettings = (s) => {
+    try { localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(s || {})) }
+    catch (_) { /* ignore quota / private mode */ }
+  }
   const bootstrapPublic = async () => {
     try {
       const s = await apiFetch('/api/settings')
       published = s || {}
       await applySettings(published)
+      cacheSettings(published)
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn('Failed to load public settings', err)
+    } finally {
+      // Always reveal the page once we either applied fresh settings or gave up
+      // (cache will have hydrated already if any had been saved before).
+      document.body.classList.add('settings-ready')
     }
   }
 
@@ -1526,6 +1536,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       published = saved
       pendingLogoUrl = null
       await applySettings(saved)
+      cacheSettings(saved)
       setPanelStatus('Published — visitors will see this now.', 'success')
     } catch (err) {
       setPanelStatus(err.message || 'Publish failed', 'error')
@@ -1548,6 +1559,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       resetGradientState()
       fillFormFromSettings(saved)
       await applySettings(saved)
+      cacheSettings(saved)
       setPanelStatus('All settings reset to defaults.', 'success')
     } catch (err) {
       setPanelStatus(err.message || 'Reset failed', 'error')
