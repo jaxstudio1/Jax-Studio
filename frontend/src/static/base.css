@@ -523,6 +523,16 @@ main {
   pointer-events: none;
 }
 
+/* Smooth reverse-fade to cube — used by the welcome's small "Back" arrow.
+   The letter FX exit plays in parallel with this opacity fade, so the user
+   sees the welcome dissolve back to reveal the cube (visual inverse of the
+   entrance ripple-then-letter-swirl). */
+.welcome-overlay.is-fading-back {
+  opacity: 0;
+  transition: opacity 1.1s cubic-bezier(0.5, 0, 0.2, 1);
+  pointer-events: none;
+}
+
 /* Bidirectional fade/translate for the static welcome elements ("Welcome to"
    greet, "!" bang, sub-heading, action buttons, scroll arrow, back arrow).
    Transitions (not keyframe animations) so when `is-exiting` is removed on
@@ -530,9 +540,15 @@ main {
    smoothly as the user reverses past the threshold. */
 .welcome-overlay__greet,
 .welcome-overlay__sub,
-.welcome-overlay__actions,
 .welcome-overlay__back,
 .welcome-overlay__scroll {
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* When letter FX is enabled, the actions container's children (button labels)
+   are animated per-letter. The container itself just stays visible. When FX
+   is OFF, fall back to opacity transition so user still gets a smooth fade. */
+.welcome-overlay:not(.has-letterfx) .welcome-overlay__actions {
   transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -542,6 +558,11 @@ main {
   transition: opacity 0.6s cubic-bezier(0.5, 0, 0.2, 1),
               transform 0.6s cubic-bezier(0.5, 0, 0.2, 1);
 }
+
+/* When letter FX IS enabled, suppress the simple opacity-fade on greet so it
+   doesn't fight with the per-letter swirl. */
+.welcome-overlay.has-letterfx.is-exiting .welcome-overlay__greet { opacity: 1; transform: none; }
+.welcome-overlay.has-letterfx.is-exiting .welcome-overlay__actions { opacity: 1; transform: none; pointer-events: none; }
 
 .welcome-overlay.is-exiting .welcome-overlay__greet,
 .welcome-overlay.is-exiting .welcome-overlay__sub {
@@ -556,15 +577,16 @@ main {
   transform: translateY(-44px) rotate(-22deg) scale(0.85);
   transition-delay: 0.08s;
 }
-/* Stagger the actions/back/scroll a touch so they sweep up after the title */
-.welcome-overlay.is-exiting .welcome-overlay__actions,
+/* Stagger the actions/back/scroll a touch so they sweep up after the title
+   (only when letter FX is OFF — see above for FX-on override). */
+.welcome-overlay:not(.has-letterfx).is-exiting .welcome-overlay__actions,
 .welcome-overlay.is-exiting .welcome-overlay__back,
 .welcome-overlay.is-exiting .welcome-overlay__scroll {
   opacity: 0;
   transform: translateY(-14px);
   pointer-events: none;
 }
-.welcome-overlay.is-exiting .welcome-overlay__actions { transition-delay: 0.10s; }
+.welcome-overlay:not(.has-letterfx).is-exiting .welcome-overlay__actions { transition-delay: 0.10s; }
 .welcome-overlay.is-exiting .welcome-overlay__back    { transition-delay: 0.14s; }
 .welcome-overlay.is-exiting .welcome-overlay__scroll  { transition-delay: 0.06s; }
 

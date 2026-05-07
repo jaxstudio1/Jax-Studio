@@ -15,6 +15,9 @@ const PRESET_BY_NAME = Object.fromEntries(EFFECT_PRESETS.map((p) => [p.name, p])
 const overlay = document.querySelector('.welcome-overlay')
 const headingEl = overlay && overlay.querySelector('.welcome-overlay__brand')
 const subEl = overlay && overlay.querySelector('.welcome-overlay__sub')
+const greetEl = overlay && overlay.querySelector('.welcome-overlay__greet')
+const ctaPrimaryEl = overlay && overlay.querySelector('[data-testid="welcome-contact-btn"]')
+const ctaSecondaryEl = overlay && overlay.querySelector('[data-testid="welcome-projects-btn"]')
 
 let _state = {
   effectName: null,            // null = no letter animation
@@ -29,8 +32,14 @@ let _state = {
 
 let _headingWord = null
 let _subWord = null
+let _greetWord = null
+let _ctaPrimaryWord = null
+let _ctaSecondaryWord = null
 let _origHeading = null  // raw text fallback
 let _origSub = null
+let _origGreet = null
+let _origCtaPrimary = null
+let _origCtaSecondary = null
 
 const captureOriginal = () => {
   if (headingEl && _origHeading === null) {
@@ -43,6 +52,9 @@ const captureOriginal = () => {
   if (subEl && _origSub === null) {
     _origSub = subEl.textContent
   }
+  if (greetEl && _origGreet === null) _origGreet = greetEl.textContent
+  if (ctaPrimaryEl && _origCtaPrimary === null) _origCtaPrimary = ctaPrimaryEl.textContent
+  if (ctaSecondaryEl && _origCtaSecondary === null) _origCtaSecondary = ctaSecondaryEl.textContent
 }
 
 const restorePlainHeading = () => {
@@ -60,9 +72,29 @@ const restorePlainSub = () => {
   subEl.textContent = _origSub
 }
 
+const restorePlainGreet = () => {
+  if (!greetEl) return
+  if (_greetWord) { _greetWord.destroy(); _greetWord = null }
+  captureOriginal()
+  greetEl.classList.remove('is-letterfx')
+  greetEl.textContent = _origGreet
+}
+
+const restorePlainCta = (el, wordRefName, origRef) => {
+  if (!el) return
+  if (wordRefName === 'primary' && _ctaPrimaryWord) { _ctaPrimaryWord.destroy(); _ctaPrimaryWord = null }
+  if (wordRefName === 'secondary' && _ctaSecondaryWord) { _ctaSecondaryWord.destroy(); _ctaSecondaryWord = null }
+  captureOriginal()
+  el.classList.remove('is-letterfx')
+  el.textContent = origRef
+}
+
 const restoreAll = () => {
   restorePlainHeading()
   restorePlainSub()
+  restorePlainGreet()
+  restorePlainCta(ctaPrimaryEl, 'primary', _origCtaPrimary)
+  restorePlainCta(ctaSecondaryEl, 'secondary', _origCtaSecondary)
 }
 
 /** Pick the shapeTypes array based on the user's choice. */
@@ -138,6 +170,28 @@ export const applyWelcomeLetterFxSettings = (settings = {}) => {
     _subWord = new Word(subEl, Object.assign({}, effect.options, { totalShapes: Math.round((effect.options.totalShapes || 10) * 0.6) }))
     Array.from(subEl.querySelectorAll('span')).forEach((s) => { s.style.opacity = 0 })
   }
+  // Greet ("Welcome to") — always animated if any letter FX is on. Smaller
+  // shape count so it doesn't visually compete with the headline.
+  if (greetEl) {
+    captureOriginal()
+    greetEl.classList.add('is-letterfx')
+    greetEl.textContent = (_origGreet || '').replace(/ /g, '\u00a0')
+    _greetWord = new Word(greetEl, Object.assign({}, effect.options, { totalShapes: Math.round((effect.options.totalShapes || 10) * 0.45) }))
+    Array.from(greetEl.querySelectorAll('span')).forEach((s) => { s.style.opacity = 0 })
+  }
+  // Button labels — animate "Start a project" + "Past Projects". Light shape
+  // count so the per-letter swirl doesn't overflow the button outline.
+  const buildCtaWord = (el) => {
+    if (!el) return null
+    el.classList.add('is-letterfx')
+    const orig = el.textContent
+    el.textContent = orig.replace(/ /g, '\u00a0')
+    const w = new Word(el, Object.assign({}, effect.options, { totalShapes: Math.round((effect.options.totalShapes || 10) * 0.35) }))
+    Array.from(el.querySelectorAll('span')).forEach((s) => { s.style.opacity = 0 })
+    return w
+  }
+  if (ctaPrimaryEl) { captureOriginal(); _ctaPrimaryWord = buildCtaWord(ctaPrimaryEl) }
+  if (ctaSecondaryEl) { captureOriginal(); _ctaSecondaryWord = buildCtaWord(ctaSecondaryEl) }
 }
 
 /** Run the entrance animation on the currently configured elements. */
@@ -146,8 +200,11 @@ export const playWelcomeEntrance = () => {
   const effect = resolveEffect()
   if (!effect || !effect.show) return Promise.resolve()
   const promises = []
+  if (_greetWord) promises.push(_greetWord.show(effect.show))
   if (_headingWord) promises.push(_headingWord.show(effect.show))
   if (_subWord) promises.push(_subWord.show(effect.show))
+  if (_ctaPrimaryWord) promises.push(_ctaPrimaryWord.show(effect.show))
+  if (_ctaSecondaryWord) promises.push(_ctaSecondaryWord.show(effect.show))
   return Promise.all(promises)
 }
 
@@ -157,8 +214,11 @@ export const playWelcomeExit = () => {
   const effect = resolveEffect()
   if (!effect || !effect.hide) return Promise.resolve()
   const promises = []
+  if (_greetWord) promises.push(_greetWord.hide(effect.hide))
   if (_headingWord) promises.push(_headingWord.hide(effect.hide))
   if (_subWord) promises.push(_subWord.hide(effect.hide))
+  if (_ctaPrimaryWord) promises.push(_ctaPrimaryWord.hide(effect.hide))
+  if (_ctaSecondaryWord) promises.push(_ctaSecondaryWord.hide(effect.hide))
   return Promise.all(promises)
 }
 
@@ -201,8 +261,11 @@ export const playAboutExit = () => {
   const effect = resolveAboutEffect()
   if (!effect || !effect.hide) return Promise.resolve()
   const promises = []
+  if (_greetWord) promises.push(_greetWord.hide(effect.hide))
   if (_headingWord) promises.push(_headingWord.hide(effect.hide))
   if (_subWord) promises.push(_subWord.hide(effect.hide))
+  if (_ctaPrimaryWord) promises.push(_ctaPrimaryWord.hide(effect.hide))
+  if (_ctaSecondaryWord) promises.push(_ctaSecondaryWord.hide(effect.hide))
   return Promise.all(promises)
 }
 
@@ -211,7 +274,10 @@ export const playAboutEntrance = () => {
   const effect = resolveAboutEffect()
   if (!effect || !effect.show) return Promise.resolve()
   const promises = []
+  if (_greetWord) promises.push(_greetWord.show(effect.show))
   if (_headingWord) promises.push(_headingWord.show(effect.show))
   if (_subWord) promises.push(_subWord.show(effect.show))
+  if (_ctaPrimaryWord) promises.push(_ctaPrimaryWord.show(effect.show))
+  if (_ctaSecondaryWord) promises.push(_ctaSecondaryWord.show(effect.show))
   return Promise.all(promises)
 }

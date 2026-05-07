@@ -384,12 +384,24 @@ const goToProjects = async () => {
   }
 }
 
-// Back button on welcome — animate to cube
-const backToCube = () => {
-  exitAboutScrollMode()
-  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
+// Back button on welcome — smooth reverse-fade to cube (NOT instant).
+// Plays the letter FX exit on greet/heading/sub/buttons, fades the overlay
+// opacity to 0 in parallel, then clears all state classes once done. The
+// user sees the welcome dissolve back to reveal the cube — the visual
+// inverse of the entrance.
+const backToCube = async () => {
+  if (_scrolling) return
+  if (!overlay.classList.contains('is-revealed')) return
+  _scrolling = true
+  exitAboutScrollMode() // clean up any scroll-mode state if present
+  overlay.classList.add('is-exiting', 'is-fading-back')
   if (hintEl) hintEl.style.opacity = ''
-  playWelcomeExit().catch(() => {})
+  // Fire letter FX exit + opacity fade in parallel
+  try { await playWelcomeExit() } catch (_) {}
+  // Small extra beat so the opacity fade-out completes
+  await new Promise((res) => setTimeout(res, 250))
+  overlay.classList.remove('is-active', 'is-revealed', 'is-exiting', 'is-fading-back', 'is-scrolling-out')
+  _scrolling = false
 }
 
 // Back button on projects/about — return to home (cube + welcome dismissed)
