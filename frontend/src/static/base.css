@@ -362,6 +362,16 @@ main {
   transform: translateY(0);
 }
 
+/* When a letter animation is active, the letter spans handle the entrance —
+   so the parent fades in fast with no translate shift to avoid double-motion. */
+.welcome-overlay.has-letterfx .welcome-overlay__text {
+  transform: none;
+  transition: opacity 0.35s ease calc(var(--ripple-speed, 1.8) * 1.4s);
+}
+.welcome-overlay.has-letterfx.is-active .welcome-overlay__text {
+  transform: none;
+}
+
 .welcome-overlay__greet {
   font-family: var(--mono-font);
   font-size: clamp(0.72rem, 1.2vw, 0.92rem);

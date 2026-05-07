@@ -253,10 +253,15 @@ const triggerWelcome = (clientX, clientY) => {
   overlay.classList.add('is-active')
   if (hintEl) hintEl.style.opacity = '0'
   // After the fill completes, kick off the letter animation + show scroll arrow.
-  // ripple_speed default = 1.8; fill ends at ~1.85s × 1.8 ≈ 3.3s — but we start
-  // letters slightly earlier so they overlap with the fill for a punchier feel.
+  // When a letter effect is active, the parent text fades in fast at speed×1.4s,
+  // so we trigger the letter entrance at the SAME instant — no double-motion stutter.
+  // Without a letter effect, the parent's natural CSS transition (delay speed×1.85s + 0.7s)
+  // handles the entrance and we don't need to fire anything.
   const speed = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ripple-speed').trim() || '1.8')
-  const enterDelay = Math.max(400, speed * 1300)
+  const hasLetterFx = overlay.classList.contains('has-letterfx')
+  const enterDelay = hasLetterFx
+    ? Math.max(400, speed * 1400)             // letter mode — start right when parent reveals
+    : Math.max(600, speed * 1850 + 200)       // plain mode — wait until parent fade nearly done
   setTimeout(() => {
     overlay.classList.add('is-revealed')
     playWelcomeEntrance()

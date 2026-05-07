@@ -109,9 +109,11 @@ export const applyWelcomeLetterFxSettings = (settings = {}) => {
   })
   // Always tear down before rebuilding
   restoreAll()
+  if (overlay) overlay.classList.remove('has-letterfx')
   if (!_state.effectName) return  // plain markup only
   const effect = resolveEffect()
   if (!effect) return
+  if (overlay) overlay.classList.add('has-letterfx')
   // Build Word for chosen targets
   if ((_state.applyTo === 'heading' || _state.applyTo === 'both') && headingEl) {
     captureOriginal()
