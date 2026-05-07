@@ -163,6 +163,8 @@ class Settings(BaseModel):
     brand_tagline: Optional[str] = None
     welcome_heading: Optional[str] = None
     welcome_sub: Optional[str] = None
+    welcome_letter_spacing: Optional[float] = None    # em units, default -0.02
+    welcome_line_spacing: Optional[float] = None      # multiplier, default 0.95
     accent_color: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -181,6 +183,8 @@ class SettingsUpdate(BaseModel):
     brand_tagline: Optional[str] = Field(default=None, max_length=80)
     welcome_heading: Optional[str] = Field(default=None, max_length=80)
     welcome_sub: Optional[str] = Field(default=None, max_length=160)
+    welcome_letter_spacing: Optional[float] = Field(default=None, ge=-0.05, le=0.6)
+    welcome_line_spacing: Optional[float] = Field(default=None, ge=0.7, le=2.0)
     accent_color: Optional[str] = Field(default=None, max_length=9)
 
     @field_validator('accent_color', 'gradient_color_a', 'gradient_color_b')
@@ -550,6 +554,7 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "gradient_color_a": None, "gradient_color_b": None,
             "brand_title": None, "brand_tagline": None,
             "welcome_heading": None, "welcome_sub": None,
+            "welcome_letter_spacing": None, "welcome_line_spacing": None,
             "accent_color": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},

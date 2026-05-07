@@ -43,6 +43,23 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 11 (Feb 2026) — Collapsible Inbox + Multi-page Admin Panel
+- **Inbox is now collapsible**:
+  - Section header is a clickable toggle with a chevron icon (rotates -90° when collapsed)
+  - Auto-collapse on first load when there are no unread messages, auto-open when there are
+  - User preference persists in `localStorage` (`jax_admin_inbox_collapsed`)
+  - Refresh button (↻) keeps `e.stopPropagation()` so it doesn't accidentally toggle the section
+- **Multi-page panel cycling** (← 1/2 →):
+  - Existing seven sections are now wrapped in `[data-page="1"]`; the new welcome-typography section lives in `[data-page="2"]`
+  - Pager bar at the bottom of the scroll area: prev arrow + "1 / 2" indicator + next arrow (the prev/next disable at the ends)
+  - Animated page-in (8 px slide + fade, 280 ms) + scroll position resets to top on switch
+  - Active page persisted via `localStorage` (`jax_admin_panel_page`) so reopening the panel returns to your last-viewed page
+- **Page 2 — Welcome overlay typography**:
+  - Letter spacing slider (-0.05 → 0.6 em, default -0.02)
+  - Line spacing slider (0.7× → 2.0×, default 0.95)
+  - Both apply LIVE via CSS custom properties on `:root` (`--welcome-brand-ls`, `--welcome-brand-lh`) consumed by `.welcome-overlay__brand`
+  - Backend persistence: new `welcome_letter_spacing` + `welcome_line_spacing` fields on `Settings` and `SettingsUpdate` (with the same range validators), wired through Reset to defaults, and round-trip-tested via PUT → GET (live API confirmed: `ls=0.12 lh=1.6` saved, public GET reads it back, out-of-range PUT properly 422s)
+
 ### Phase 10 (Feb 2026) — Production static build (Jax site)
 - Switched supervisor's `frontend` program from `yarn start` (webpack-dev-server) to `yarn start:prod`
 - New `start:prod` script in `/app/frontend/package.json`: `yarn build && serve -s dist -l tcp://0.0.0.0:3000 --no-clipboard`

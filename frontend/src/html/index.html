@@ -186,14 +186,20 @@
         </div>
 
         <div class="admin-panel__scroll">
+          <div class="admin-panel__page is-active" data-page="1" data-testid="admin-page-1">
           <section class="admin-section admin-section--inbox" data-testid="admin-inbox-section">
-            <div class="admin-section__head">
+            <div class="admin-section__head" data-testid="admin-inbox-toggle">
               <h3 class="admin-section__title">Inbox <span class="admin-inbox__badge" data-testid="admin-inbox-badge" hidden>0</span></h3>
               <button type="button" class="admin-panel__link admin-inbox__refresh" data-testid="admin-inbox-refresh" aria-label="Refresh inbox">↻</button>
+              <span class="admin-inbox__chevron" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <p class="admin-section__hint" data-testid="admin-inbox-meta">Loading messages…</p>
-            <div class="admin-inbox__list" data-testid="admin-inbox-list" role="list"></div>
-            <p class="admin-inbox__empty" data-testid="admin-inbox-empty" hidden>No messages yet.</p>
+            <div class="admin-inbox__body">
+              <p class="admin-section__hint" data-testid="admin-inbox-meta">Loading messages…</p>
+              <div class="admin-inbox__list" data-testid="admin-inbox-list" role="list"></div>
+              <p class="admin-inbox__empty" data-testid="admin-inbox-empty" hidden>No messages yet.</p>
+            </div>
           </section>
 
           <section class="admin-section">
@@ -331,6 +337,38 @@
               </div>
             </div>
           </section>
+          </div><!-- /page 1 -->
+
+          <div class="admin-panel__page" data-page="2" data-testid="admin-page-2" aria-hidden="true">
+            <section class="admin-section">
+              <h3 class="admin-section__title">Welcome overlay typography</h3>
+              <p class="admin-section__hint">Tune the big &ldquo;Welcome to / Jax Studio!&rdquo; heading shown after the cube ripple.</p>
+              <div class="admin-slider">
+                <div class="admin-slider__row">
+                  <span class="admin-slider__label">Letter spacing</span>
+                  <span class="admin-slider__value" data-testid="admin-welcome-letter-spacing-value">-0.02 em</span>
+                </div>
+                <input type="range" min="-0.05" max="0.6" step="0.01" value="-0.02" data-testid="admin-welcome-letter-spacing" class="admin-slider__input" />
+              </div>
+              <div class="admin-slider">
+                <div class="admin-slider__row">
+                  <span class="admin-slider__label">Line spacing</span>
+                  <span class="admin-slider__value" data-testid="admin-welcome-line-spacing-value">0.95×</span>
+                </div>
+                <input type="range" min="0.7" max="2.0" step="0.01" value="0.95" data-testid="admin-welcome-line-spacing" class="admin-slider__input" />
+              </div>
+            </section>
+          </div><!-- /page 2 -->
+
+          <div class="admin-panel__pager" data-testid="admin-pager">
+            <button type="button" class="admin-pager__btn" data-testid="admin-pager-prev" aria-label="Previous page" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="admin-pager__indicator" data-testid="admin-pager-indicator">1 / 2</span>
+            <button type="button" class="admin-pager__btn" data-testid="admin-pager-next" aria-label="Next page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
         </div>
 
         <footer class="admin-panel__footer">

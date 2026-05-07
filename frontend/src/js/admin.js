@@ -12,6 +12,8 @@ import {
 
 const STORAGE_KEY = 'jax_admin_token'
 const PANEL_WIDTH_KEY = 'jax_admin_panel_width'
+const PANEL_PAGE_KEY = 'jax_admin_panel_page'
+const INBOX_COLLAPSED_KEY = 'jax_admin_inbox_collapsed'
 const DEFAULTS = {
   cube_text_1: 'COMING',
   cube_text_2: 'SOON',
@@ -25,6 +27,8 @@ const DEFAULTS = {
   brand_tagline: 'Coming Soon',
   welcome_heading: 'Jax Studio',
   welcome_sub: 'Graphic Design · Portfolio & Studio',
+  welcome_letter_spacing: -0.02,
+  welcome_line_spacing: 0.95,
   accent_color: '#ff5722',
 }
 
@@ -240,6 +244,10 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const inputBrandTagline = $('[data-testid="admin-brand-tagline"]')
   const inputWelcomeHeading = $('[data-testid="admin-welcome-heading"]')
   const inputWelcomeSub = $('[data-testid="admin-welcome-sub"]')
+  const inputWelcomeLetterSpacing = $('[data-testid="admin-welcome-letter-spacing"]')
+  const labelWelcomeLetterSpacing = $('[data-testid="admin-welcome-letter-spacing-value"]')
+  const inputWelcomeLineSpacing = $('[data-testid="admin-welcome-line-spacing"]')
+  const labelWelcomeLineSpacing = $('[data-testid="admin-welcome-line-spacing-value"]')
   const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
   const inputAccentHex = $('[data-testid="admin-accent-hex"]')
   const swatches = panel.querySelectorAll('.admin-color__swatch')
@@ -260,6 +268,14 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const inboxMeta = $('[data-testid="admin-inbox-meta"]')
   const inboxEmpty = $('[data-testid="admin-inbox-empty"]')
   const inboxRefreshBtn = $('[data-testid="admin-inbox-refresh"]')
+  const inboxToggle = $('[data-testid="admin-inbox-toggle"]')
+  const inboxSection = $('[data-testid="admin-inbox-section"]')
+
+  // Pager refs
+  const pagerPrev = $('[data-testid="admin-pager-prev"]')
+  const pagerNext = $('[data-testid="admin-pager-next"]')
+  const pagerIndicator = $('[data-testid="admin-pager-indicator"]')
+  const pages = panel.querySelectorAll('.admin-panel__page')
 
   const brandTitleEl = $('[data-testid="brand-title"]')
   const brandTaglineEl = $('[data-testid="brand-tagline"]')
@@ -321,6 +337,11 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (welcomeSubEl) {
       welcomeSubEl.textContent = s.welcome_sub || DEFAULTS.welcome_sub
     }
+    // Welcome overlay heading typography (CSS vars on :root)
+    const wls = (typeof s.welcome_letter_spacing === 'number') ? s.welcome_letter_spacing : DEFAULTS.welcome_letter_spacing
+    const wlh = (typeof s.welcome_line_spacing === 'number') ? s.welcome_line_spacing : DEFAULTS.welcome_line_spacing
+    document.documentElement.style.setProperty('--welcome-brand-ls', `${wls}em`)
+    document.documentElement.style.setProperty('--welcome-brand-lh', String(wlh))
   }
 
   const applyCubeTextures = async (s) => {
@@ -394,6 +415,16 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     inputBrandTagline.value = s.brand_tagline || ''
     inputWelcomeHeading.value = s.welcome_heading || ''
     inputWelcomeSub.value = s.welcome_sub || ''
+    const wls = (typeof s.welcome_letter_spacing === 'number') ? s.welcome_letter_spacing : DEFAULTS.welcome_letter_spacing
+    const wlh = (typeof s.welcome_line_spacing === 'number') ? s.welcome_line_spacing : DEFAULTS.welcome_line_spacing
+    if (inputWelcomeLetterSpacing) {
+      inputWelcomeLetterSpacing.value = wls
+      labelWelcomeLetterSpacing.textContent = `${wls.toFixed(2)} em`
+    }
+    if (inputWelcomeLineSpacing) {
+      inputWelcomeLineSpacing.value = wlh
+      labelWelcomeLineSpacing.textContent = `${wlh.toFixed(2)}×`
+    }
     const accent = s.accent_color || DEFAULTS.accent_color
     inputAccentPicker.value = accent
     inputAccentHex.value = accent.toUpperCase()
@@ -421,6 +452,8 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     brand_tagline: inputBrandTagline.value.trim() || null,
     welcome_heading: inputWelcomeHeading.value.trim() || null,
     welcome_sub: inputWelcomeSub.value.trim() || null,
+    welcome_letter_spacing: inputWelcomeLetterSpacing ? parseFloat(inputWelcomeLetterSpacing.value) : DEFAULTS.welcome_letter_spacing,
+    welcome_line_spacing: inputWelcomeLineSpacing ? parseFloat(inputWelcomeLineSpacing.value) : DEFAULTS.welcome_line_spacing,
     accent_color: inputAccentHex.value.trim() || null,
     logo_url: pendingLogoUrl || published.logo_url || null,
   })
@@ -586,6 +619,17 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
           : `${total} message${total === 1 ? '' : 's'} · ${unread} unread`
       }
       renderInbox(items)
+      // First-load default: collapse if no unread + user hasn't set a preference
+      if (!loadInbox._initialized) {
+        loadInbox._initialized = true
+        let stored = null
+        try { stored = localStorage.getItem(INBOX_COLLAPSED_KEY) } catch (_) { /* */ }
+        if (stored === '1' || stored === '0') {
+          setInboxCollapsed(stored === '1', false)
+        } else {
+          setInboxCollapsed(unread === 0, false)
+        }
+      }
     } catch (err) {
       if (inboxMeta) inboxMeta.textContent = `Could not load inbox: ${err.message}`
       renderInbox([])
@@ -597,6 +641,57 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   if (inboxRefreshBtn) {
     inboxRefreshBtn.addEventListener('click', (e) => { e.stopPropagation(); loadInbox() })
   }
+
+  // Inbox collapse / expand
+  const setInboxCollapsed = (collapsed, persist = true) => {
+    if (!inboxSection) return
+    inboxSection.classList.toggle('is-collapsed', !!collapsed)
+    if (persist) {
+      try { localStorage.setItem(INBOX_COLLAPSED_KEY, collapsed ? '1' : '0') } catch (_) { /* */ }
+    }
+  }
+  if (inboxToggle) {
+    inboxToggle.addEventListener('click', (e) => {
+      // Don't toggle if the click was on the refresh icon
+      if (e.target.closest('.admin-inbox__refresh')) return
+      const isCollapsed = inboxSection.classList.contains('is-collapsed')
+      setInboxCollapsed(!isCollapsed)
+    })
+  }
+
+  // Multi-page panel cycler
+  const TOTAL_PAGES = pages.length
+  const setActivePage = (idx) => {
+    const i = Math.max(0, Math.min(TOTAL_PAGES - 1, idx))
+    pages.forEach((p, k) => {
+      p.classList.toggle('is-active', k === i)
+      p.setAttribute('aria-hidden', k === i ? 'false' : 'true')
+    })
+    if (pagerIndicator) pagerIndicator.textContent = `${i + 1} / ${TOTAL_PAGES}`
+    if (pagerPrev) pagerPrev.disabled = (i === 0)
+    if (pagerNext) pagerNext.disabled = (i === TOTAL_PAGES - 1)
+    try { localStorage.setItem(PANEL_PAGE_KEY, String(i)) } catch (_) { /* */ }
+    // Scroll the panel back to the top when switching pages
+    const scroll = panel.querySelector('.admin-panel__scroll')
+    if (scroll) scroll.scrollTop = 0
+  }
+  if (pagerPrev) pagerPrev.addEventListener('click', () => {
+    const cur = Array.from(pages).findIndex((p) => p.classList.contains('is-active'))
+    setActivePage(cur - 1)
+  })
+  if (pagerNext) pagerNext.addEventListener('click', () => {
+    const cur = Array.from(pages).findIndex((p) => p.classList.contains('is-active'))
+    setActivePage(cur + 1)
+  })
+  // Restore last-active page from localStorage (default 0 = page 1)
+  try {
+    const savedPage = parseInt(localStorage.getItem(PANEL_PAGE_KEY) || '0', 10)
+    if (!isNaN(savedPage) && savedPage >= 0 && savedPage < TOTAL_PAGES) {
+      setActivePage(savedPage)
+    } else {
+      setActivePage(0)
+    }
+  } catch (_) { setActivePage(0) }
 
   // ----- public bootstrap (load published settings on page load) -----
   const bootstrapPublic = async () => {
@@ -716,6 +811,27 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     labelLineSpacing.textContent = `${parseFloat(inputLineSpacing.value).toFixed(2)}×`
     liveSpacingRender()
   })
+
+  // Welcome overlay typography sliders → CSS vars on :root (live, no rebuild)
+  const applyWelcomeSpacingFromForm = () => {
+    if (!inputWelcomeLetterSpacing || !inputWelcomeLineSpacing) return
+    const ls = parseFloat(inputWelcomeLetterSpacing.value)
+    const lh = parseFloat(inputWelcomeLineSpacing.value)
+    document.documentElement.style.setProperty('--welcome-brand-ls', `${ls}em`)
+    document.documentElement.style.setProperty('--welcome-brand-lh', String(lh))
+  }
+  if (inputWelcomeLetterSpacing) {
+    inputWelcomeLetterSpacing.addEventListener('input', () => {
+      labelWelcomeLetterSpacing.textContent = `${parseFloat(inputWelcomeLetterSpacing.value).toFixed(2)} em`
+      applyWelcomeSpacingFromForm()
+    })
+  }
+  if (inputWelcomeLineSpacing) {
+    inputWelcomeLineSpacing.addEventListener('input', () => {
+      labelWelcomeLineSpacing.textContent = `${parseFloat(inputWelcomeLineSpacing.value).toFixed(2)}×`
+      applyWelcomeSpacingFromForm()
+    })
+  }
 
   // Gradient preset + color overrides
   const applyGradientFromForm = () => {
