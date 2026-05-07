@@ -43,6 +43,53 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 14 (Feb 2026) — Letter animations, scroll-to-projects, & admin Page 4 CMS
+A massive feature drop covering 3 user requests in one pass:
+
+#### A) Ripple defaults shipped (1.80× / 20% / 4 rings)
+- `DEFAULTS` in admin.js, slider initial values, and CSS fallbacks all bumped
+- Live-DB values updated via PUT so the deployed site already reflects them
+
+#### B) Decorative letter animations on the welcome overlay (codrops)
+- Vendored the codrops `DecorativeLetterAnimations` repo (MIT) into `/app/frontend/src/js/letterFx/`:
+  - `wordFx.js` — adapted to ES modules (with a tricky webpack 4 + babel-loader interop fix: `require('animejs')` returns `{__esModule: true, default: anime}`, so we unwrap with `_animeImported.default || _animeImported`)
+  - `effects.js` — all 9 named presets (Eurhythmic, Aquarius, Lycanthropy, Wonderland, Screenager, Callipygian, Eviternity, Jumbuck, Babooner) extracted from the codrops demo, plus a `customizeEffect()` helper that applies user overrides without breaking function-based delay/duration values
+- New `welcomeFx.js` module manages `Word` instances on `.welcome-overlay__brand` and `.welcome-overlay__sub`:
+  - Captures original heading/sub text on first run, restores on tear-down
+  - Replaces ASCII spaces with non-breaking spaces (`\u00a0`) so charming-split spans don't collapse whitespace under `display: inline-block`
+  - Keeps the orange `!` as a separate, un-split sibling so it retains the `welcome-overlay__bang` class
+  - `playWelcomeEntrance()` / `playWelcomeExit()` Promises wired into the cube-click & dismiss flow
+- Page 2 of admin panel gets **8 new tweakables** (settings persist via the existing `/api/admin/settings` PUT):
+  - **Effect** dropdown — None + 9 named presets
+  - **Speed** slider — 0.5× → 2.0× (multiplies durations & delays)
+  - **Per-letter stagger** slider — 0 (use preset) or 10 → 80 ms override
+  - **Decoration shapes** select — Mix · Circles only · Rectangles only · Triangles only
+  - **Decoration density** select — Sparse · Normal · Dense (multiplies `totalShapes` by 0.5/1/1.6)
+  - **Filled shapes** checkbox — uncheck for outlined only
+  - **Tint shapes from accent color** checkbox — overrides the preset's color palette with `[accent, white, black]`
+  - **Apply to** select — Heading only · Sub-heading only · Both
+- Backend `Settings` + `SettingsUpdate` extended with `welcome_letter_*` fields + range-validated allowed-value sets (`ALLOWED_LETTER_EFFECTS`, `ALLOWED_LETTER_DENSITIES`, `ALLOWED_LETTER_SHAPES`, `ALLOWED_LETTER_APPLY_TO`)
+- All controls live-preview without needing Publish — the next cube click shows the effect immediately
+
+#### C) Scroll arrow → Past Projects section + admin Page 4 CMS
+- Tiny **scroll arrow** at the bottom of the welcome overlay — fades in `0.8 × ripple_speed` seconds after the welcome heading reveals; pulses with a 2 s `scroll-bob` keyframe
+- **Click or wheel-down** triggers `playWelcomeExit()` → `is-scrolling-out` (overlay slides up off-screen over 0.9 s with `cubic-bezier(0.7, 0, 0.2, 1)`) → reveals `.projects` section + `body.is-scrollable`
+- **Past Projects section** at `<section class="projects">` with eyebrow / heading / lede / 3-column responsive CSS grid:
+  - 3 cols on ≥1100 px viewports, auto-fit ≥320 px on tablet, ≥290 px on mobile
+  - Cards: image + accent-tinted gradient placeholder (with the project's first-letter initial when no image), hover-revealed overlay (orange year tag, title, 3-line clamped description)
+  - **3D tilt on hover** — JS `mousemove` → `rotateX/rotateY` (-4.5°..+6° range) + `scale(1.02)` + accent-tinted glow box-shadow; lerps with 0.18 weighted easing for buttery-smooth motion; resets on `mouseleave`
+- **New backend collection** `projects` with full CRUD:
+  - `GET /api/projects` — public, sorted by `sort_order` then `year` DESC
+  - `POST /api/admin/projects`, `PUT /api/admin/projects/{id}`, `DELETE /api/admin/projects/{id}` — auth-required
+  - `POST /api/admin/projects/upload` — multipart file upload (.png/.jpg/.jpeg/.webp/.svg, ≤6 MB), stored under `/app/backend/uploads/`, served via `/api/uploads/*`
+- **Admin Page 4** — full-fledged project CMS:
+  - "+ Add" button creates a new placeholder
+  - Each project row inline-edits title, year, sort order, description (Save persists)
+  - "Upload image" / "Replace image" — uploads to backend, persists `image_url` immediately
+  - "Delete" — confirms then DELETEs (also unlinks the uploaded image file)
+  - Rendered in scroll list with thumbnail, accent-tinted thumb when no image
+- **6 seeded placeholder projects** populated via `POST /api/admin/projects` so the deployed site has content out of the box
+
 ### Phase 13.1 (Feb 2026) — Ripple base timing slowed ~25%
 User feedback: the default `1.0×` ripple felt too fast. Slowed every base duration & delay roughly 25 % so the new default reads as relaxed-cinematic instead of punchy:
 - Ring durations: 1.40 / 1.55 / 1.70 / 1.85 / 2.00 s → **1.75 / 1.95 / 2.15 / 2.35 / 2.55 s**

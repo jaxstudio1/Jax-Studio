@@ -97,6 +97,12 @@
             <button class="btn btn--ghost" type="button" data-testid="welcome-close">Back</button>
           </div>
         </div>
+        <button class="welcome-overlay__scroll" type="button" data-testid="welcome-scroll" aria-label="Scroll to past projects">
+          <span class="welcome-overlay__scroll-label">Scroll</span>
+          <span class="welcome-overlay__scroll-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></svg>
+          </span>
+        </button>
       </div>
 
       <!-- Contact modal -->
@@ -151,6 +157,19 @@
           </div>
         </div>
       </div>
+
+      <!-- Past Projects (scroll-revealed) -->
+      <section class="projects" data-testid="projects-section" aria-hidden="true">
+        <header class="projects__head">
+          <span class="projects__eyebrow">Selected work</span>
+          <h2 class="projects__title">Past Projects<span class="accent">.</span></h2>
+          <p class="projects__lede">A glimpse at what I&rsquo;ve been making — branding, identity systems, and editorial design for studios I&rsquo;ve loved working with.</p>
+        </header>
+        <div class="projects__grid" data-testid="projects-grid">
+          <!-- Project cards rendered by JS from /api/projects -->
+        </div>
+        <p class="projects__empty" data-testid="projects-empty" hidden>No projects added yet — open the admin panel to add some.</p>
+      </section>
 
       <!-- Admin login modal (password gate) -->
       <div class="admin-login" data-testid="admin-login-modal" aria-hidden="true">
@@ -365,6 +384,74 @@
                 <input type="range" min="0.7" max="2.0" step="0.01" value="0.95" data-testid="admin-welcome-line-spacing" class="admin-slider__input" />
               </div>
             </section>
+
+            <section class="admin-section">
+              <h3 class="admin-section__title">Decorative letter animation</h3>
+              <p class="admin-section__hint">Per-letter entrance animation with decorative SVG shapes (codrops). Click the cube on the live site to preview after each change.</p>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Effect</span>
+                <select class="admin-font__select" data-testid="admin-letter-effect">
+                  <option value="">— None (plain fade)</option>
+                  <option value="Eurhythmic">Eurhythmic — elastic rise</option>
+                  <option value="Aquarius">Aquarius — water drop</option>
+                  <option value="Lycanthropy">Lycanthropy — wild fly-in</option>
+                  <option value="Wonderland">Wonderland — confetti</option>
+                  <option value="Screenager">Screenager — outlined burst</option>
+                  <option value="Callipygian">Callipygian — scale punch</option>
+                  <option value="Eviternity">Eviternity — bold pop</option>
+                  <option value="Jumbuck">Jumbuck — rotating bounce</option>
+                  <option value="Babooner">Babooner — vertical sweep</option>
+                </select>
+              </label>
+              <div class="admin-slider">
+                <div class="admin-slider__row">
+                  <span class="admin-slider__label">Speed</span>
+                  <span class="admin-slider__value" data-testid="admin-letter-speed-value">1.00×</span>
+                </div>
+                <input type="range" min="0.5" max="2.0" step="0.05" value="1.0" data-testid="admin-letter-speed" class="admin-slider__input" />
+              </div>
+              <div class="admin-slider">
+                <div class="admin-slider__row">
+                  <span class="admin-slider__label">Per-letter stagger</span>
+                  <span class="admin-slider__value" data-testid="admin-letter-stagger-value">preset</span>
+                </div>
+                <input type="range" min="0" max="80" step="1" value="0" data-testid="admin-letter-stagger" class="admin-slider__input" />
+                <p class="admin-section__hint">0 = use the preset's natural stagger · 10–80 = override in ms</p>
+              </div>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Decoration shapes</span>
+                <select class="admin-font__select" data-testid="admin-letter-shapes">
+                  <option value="mix">Mix (circles + rects + polygons)</option>
+                  <option value="circle">Circles only</option>
+                  <option value="rect">Rectangles only</option>
+                  <option value="polygon">Triangles only</option>
+                </select>
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Decoration density</span>
+                <select class="admin-font__select" data-testid="admin-letter-density">
+                  <option value="sparse">Sparse</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="dense">Dense</option>
+                </select>
+              </label>
+              <label class="contact-form__field admin-checkbox-row">
+                <input type="checkbox" data-testid="admin-letter-fill" />
+                <span class="contact-form__label">Filled shapes (uncheck for outlined-only)</span>
+              </label>
+              <label class="contact-form__field admin-checkbox-row">
+                <input type="checkbox" data-testid="admin-letter-use-accent" />
+                <span class="contact-form__label">Tint shapes from accent color (else preset palette)</span>
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Apply to</span>
+                <select class="admin-font__select" data-testid="admin-letter-apply-to">
+                  <option value="heading" selected>Heading only</option>
+                  <option value="sub">Sub-heading only</option>
+                  <option value="both">Both</option>
+                </select>
+              </label>
+            </section>
           </div><!-- /page 2 -->
 
           <div class="admin-panel__page" data-page="3" data-testid="admin-page-3" aria-hidden="true">
@@ -374,17 +461,17 @@
               <div class="admin-slider">
                 <div class="admin-slider__row">
                   <span class="admin-slider__label">Speed</span>
-                  <span class="admin-slider__value" data-testid="admin-ripple-speed-value">1.00×</span>
+                  <span class="admin-slider__value" data-testid="admin-ripple-speed-value">1.80×</span>
                 </div>
-                <input type="range" min="0.5" max="2.0" step="0.05" value="1.0" data-testid="admin-ripple-speed" class="admin-slider__input" />
+                <input type="range" min="0.5" max="2.0" step="0.05" value="1.8" data-testid="admin-ripple-speed" class="admin-slider__input" />
                 <p class="admin-section__hint">Lower = punchier · higher = dreamier</p>
               </div>
               <div class="admin-slider">
                 <div class="admin-slider__row">
                   <span class="admin-slider__label">Accent tint strength</span>
-                  <span class="admin-slider__value" data-testid="admin-ripple-tint-value">30%</span>
+                  <span class="admin-slider__value" data-testid="admin-ripple-tint-value">20%</span>
                 </div>
-                <input type="range" min="0" max="60" step="1" value="30" data-testid="admin-ripple-tint" class="admin-slider__input" />
+                <input type="range" min="0" max="60" step="1" value="20" data-testid="admin-ripple-tint" class="admin-slider__input" />
                 <p class="admin-section__hint">How much of the accent color glows in the leading edge halo</p>
               </div>
               <label class="contact-form__field">
@@ -397,13 +484,25 @@
               </label>
             </section>
           </div><!-- /page 3 -->
+
+          <div class="admin-panel__page" data-page="4" data-testid="admin-page-4" aria-hidden="true">
+            <section class="admin-section">
+              <div class="admin-section__head">
+                <h3 class="admin-section__title">Past projects</h3>
+                <button type="button" class="admin-panel__link" data-testid="admin-projects-add">+ Add</button>
+              </div>
+              <p class="admin-section__hint">Add, edit, or delete projects shown in the &ldquo;Past Projects&rdquo; section. Drag to reorder coming soon — for now use the &ldquo;Order&rdquo; field on each card (lowest first).</p>
+              <div class="admin-projects" data-testid="admin-projects-list"></div>
+              <p class="admin-projects__empty" data-testid="admin-projects-empty" hidden>No projects yet — click + Add to create your first one.</p>
+            </section>
+          </div><!-- /page 4 -->
         </div>
 
         <div class="admin-panel__pager" data-testid="admin-pager">
           <button type="button" class="admin-pager__btn" data-testid="admin-pager-prev" aria-label="Previous page" disabled>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <span class="admin-pager__indicator" data-testid="admin-pager-indicator">1 / 3</span>
+          <span class="admin-pager__indicator" data-testid="admin-pager-indicator">1 / 4</span>
           <button type="button" class="admin-pager__btn" data-testid="admin-pager-next" aria-label="Next page">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>

@@ -57,6 +57,8 @@ UPLOAD_DIR = Path(os.environ.get('UPLOAD_DIR', '/app/backend/uploads'))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_LOGO_EXTS = {'.png', '.svg'}
 MAX_LOGO_BYTES = 4 * 1024 * 1024  # 4 MB
+ALLOWED_PROJECT_IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}
+MAX_PROJECT_IMAGE_BYTES = 6 * 1024 * 1024  # 6 MB
 
 # Logger
 logging.basicConfig(
@@ -146,6 +148,14 @@ ALLOWED_GRADIENT_PRESETS = {
     "default", "sunset", "ocean", "mono-white", "acid", "vaporwave", "noir", "forest",
 }
 
+ALLOWED_LETTER_EFFECTS = {
+    "Eurhythmic", "Aquarius", "Lycanthropy", "Wonderland", "Screenager",
+    "Callipygian", "Eviternity", "Jumbuck", "Babooner",
+}
+ALLOWED_LETTER_DENSITIES = {"sparse", "normal", "dense"}
+ALLOWED_LETTER_SHAPES = {"mix", "circle", "rect", "polygon"}
+ALLOWED_LETTER_APPLY_TO = {"heading", "sub", "both"}
+
 
 class Settings(BaseModel):
     """Singleton site settings doc (id='main'). All fields optional → null = use default."""
@@ -169,6 +179,15 @@ class Settings(BaseModel):
     ripple_speed: Optional[float] = None              # multiplier, default 1.0 (0.5–2.0)
     ripple_tint: Optional[int] = None                 # accent-mix %, default 30 (0–60)
     ripple_ring_count: Optional[int] = None           # 3 / 4 / 5, default 4
+    # Welcome overlay decorative letter animation (codrops)
+    welcome_letter_effect: Optional[str] = None       # one of EFFECT_NAMES
+    welcome_letter_speed: Optional[float] = None      # 0.5–2.0
+    welcome_letter_stagger: Optional[int] = None      # ms per-letter, 10–80 or 0 = preset default
+    welcome_letter_density: Optional[str] = None      # 'sparse' | 'normal' | 'dense'
+    welcome_letter_shapes: Optional[str] = None       # 'mix' | 'circle' | 'rect' | 'polygon'
+    welcome_letter_fill: Optional[bool] = None
+    welcome_letter_use_accent: Optional[bool] = None  # tint shapes from accent_color
+    welcome_letter_apply_to: Optional[str] = None     # 'heading' | 'sub' | 'both'
     updated_at: Optional[str] = None
 
 
@@ -192,6 +211,50 @@ class SettingsUpdate(BaseModel):
     ripple_speed: Optional[float] = Field(default=None, ge=0.5, le=2.0)
     ripple_tint: Optional[int] = Field(default=None, ge=0, le=60)
     ripple_ring_count: Optional[int] = Field(default=None, ge=3, le=5)
+    welcome_letter_effect: Optional[str] = Field(default=None, max_length=40)
+    welcome_letter_speed: Optional[float] = Field(default=None, ge=0.5, le=2.0)
+    welcome_letter_stagger: Optional[int] = Field(default=None, ge=0, le=80)
+    welcome_letter_density: Optional[str] = Field(default=None, max_length=12)
+    welcome_letter_shapes: Optional[str] = Field(default=None, max_length=12)
+    welcome_letter_fill: Optional[bool] = Field(default=None)
+    welcome_letter_use_accent: Optional[bool] = Field(default=None)
+    welcome_letter_apply_to: Optional[str] = Field(default=None, max_length=12)
+
+    @field_validator('welcome_letter_effect')
+    @classmethod
+    def _letter_effect(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in ALLOWED_LETTER_EFFECTS:
+            raise ValueError(f"welcome_letter_effect must be one of: {sorted(ALLOWED_LETTER_EFFECTS)}")
+        return v
+
+    @field_validator('welcome_letter_density')
+    @classmethod
+    def _letter_density(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in ALLOWED_LETTER_DENSITIES:
+            raise ValueError(f"welcome_letter_density must be one of: {sorted(ALLOWED_LETTER_DENSITIES)}")
+        return v
+
+    @field_validator('welcome_letter_shapes')
+    @classmethod
+    def _letter_shapes(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in ALLOWED_LETTER_SHAPES:
+            raise ValueError(f"welcome_letter_shapes must be one of: {sorted(ALLOWED_LETTER_SHAPES)}")
+        return v
+
+    @field_validator('welcome_letter_apply_to')
+    @classmethod
+    def _letter_apply_to(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in ALLOWED_LETTER_APPLY_TO:
+            raise ValueError(f"welcome_letter_apply_to must be one of: {sorted(ALLOWED_LETTER_APPLY_TO)}")
+        return v
 
     @field_validator('accent_color', 'gradient_color_a', 'gradient_color_b')
     @classmethod
@@ -563,6 +626,9 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "welcome_letter_spacing": None, "welcome_line_spacing": None,
             "accent_color": None,
             "ripple_speed": None, "ripple_tint": None, "ripple_ring_count": None,
+            "welcome_letter_effect": None, "welcome_letter_speed": None, "welcome_letter_stagger": None,
+            "welcome_letter_density": None, "welcome_letter_shapes": None, "welcome_letter_fill": None,
+            "welcome_letter_use_accent": None, "welcome_letter_apply_to": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},
         upsert=True,
@@ -762,6 +828,115 @@ async def sendgrid_event_webhook(request: Request):
 
     logger.info(f"SendGrid webhook: accepted={accepted} skipped={skipped}")
     return {"accepted": accepted, "skipped": skipped}
+
+
+# ================= Projects (Past Work) =================
+class ProjectIn(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    year: int = Field(..., ge=1900, le=2100)
+    description: Optional[str] = Field(default=None, max_length=400)
+    image_url: Optional[str] = Field(default=None, max_length=400)
+    accent: Optional[str] = Field(default=None, max_length=9)
+    sort_order: Optional[int] = Field(default=None, ge=0, le=9999)
+
+    @field_validator('accent')
+    @classmethod
+    def _color(cls, v):
+        return _validate_hex_color(v)
+
+
+class ProjectPatch(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    year: Optional[int] = Field(default=None, ge=1900, le=2100)
+    description: Optional[str] = Field(default=None, max_length=400)
+    image_url: Optional[str] = Field(default=None, max_length=400)
+    accent: Optional[str] = Field(default=None, max_length=9)
+    sort_order: Optional[int] = Field(default=None, ge=0, le=9999)
+
+    @field_validator('accent')
+    @classmethod
+    def _color(cls, v):
+        return _validate_hex_color(v)
+
+
+@api_router.get("/projects")
+async def list_projects():
+    """Public — returns all projects sorted by sort_order ASC, then by year DESC."""
+    rows = await (
+        db.projects.find({}, {"_id": 0})
+        .sort([("sort_order", 1), ("year", -1), ("created_at", -1)])
+        .to_list(200)
+    )
+    return rows
+
+
+@api_router.post("/admin/projects")
+async def admin_create_project(payload: ProjectIn, _: dict = Depends(require_admin)):
+    project_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    doc = payload.model_dump()
+    if doc.get("sort_order") is None:
+        # Append at end
+        last = await db.projects.find_one(
+            {}, {"sort_order": 1, "_id": 0}, sort=[("sort_order", -1)]
+        )
+        doc["sort_order"] = ((last or {}).get("sort_order") or 0) + 10
+    doc["id"] = project_id
+    doc["created_at"] = now
+    doc["updated_at"] = now
+    await db.projects.insert_one(doc.copy())
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api_router.put("/admin/projects/{project_id}")
+async def admin_update_project(
+    project_id: str,
+    payload: ProjectPatch,
+    _: dict = Depends(require_admin),
+):
+    update = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not update:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.projects.update_one({"id": project_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    doc = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    return doc
+
+
+@api_router.delete("/admin/projects/{project_id}")
+async def admin_delete_project(project_id: str, _: dict = Depends(require_admin)):
+    doc = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Project not found")
+    # Delete uploaded image file (best-effort)
+    img = doc.get("image_url")
+    if img and img.startswith("/api/uploads/"):
+        try:
+            (UPLOAD_DIR / Path(img).name).unlink(missing_ok=True)
+        except Exception:
+            pass
+    await db.projects.delete_one({"id": project_id})
+    return {"status": "ok", "id": project_id}
+
+
+@api_router.post("/admin/projects/upload")
+async def admin_upload_project_image(
+    file: UploadFile = File(...),
+    _: dict = Depends(require_admin),
+):
+    name = file.filename or ""
+    ext = Path(name).suffix.lower()
+    if ext not in ALLOWED_PROJECT_IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="Image must be .png, .jpg, .jpeg, .webp, or .svg")
+    contents = await file.read()
+    if len(contents) > MAX_PROJECT_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 6 MB)")
+    new_name = f"project-{uuid.uuid4().hex[:10]}{ext}"
+    target = UPLOAD_DIR / new_name
+    target.write_bytes(contents)
+    return {"image_url": f"/api/uploads/{new_name}", "size": len(contents), "ext": ext}
 
 
 # Include router and middleware

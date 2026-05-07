@@ -13,6 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "animejs": "3.2.2",
+    "charming": "2.0.0",
     "dat.gui": "^0.7.6",
     "file-loader": "^4.2.0",
     "gl-matrix": "^3.1.0",

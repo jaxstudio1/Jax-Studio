@@ -12,6 +12,8 @@ import cube, {Types as CubeTypes, Faces as CubeFaces, Masks as CubeMasks} from '
 import content, {Types as ContentTypes} from '~js/components/content'
 import reflection from '~js/components/reflection'
 import {initAdmin} from '~js/admin'
+import {applyWelcomeLetterFxSettings, playWelcomeEntrance, playWelcomeExit} from '~js/welcomeFx'
+import {fetchAndRenderProjects, revealProjectsSection} from '~js/projects'
 
 import '~css/main.css'
 
@@ -245,17 +247,68 @@ const triggerWelcome = (clientX, clientY) => {
   ripple.style.setProperty('--ripple-x', `${clientX}px`)
   ripple.style.setProperty('--ripple-y', `${clientY}px`)
   // ensure animation restarts: remove + force reflow + add
-  overlay.classList.remove('is-active')
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
   // eslint-disable-next-line no-unused-expressions
   overlay.offsetHeight
   overlay.classList.add('is-active')
   if (hintEl) hintEl.style.opacity = '0'
+  // After the fill completes, kick off the letter animation + show scroll arrow.
+  // ripple_speed default = 1.8; fill ends at ~1.85s × 1.8 ≈ 3.3s — but we start
+  // letters slightly earlier so they overlap with the fill for a punchier feel.
+  const speed = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ripple-speed').trim() || '1.8')
+  const enterDelay = Math.max(400, speed * 1300)
+  setTimeout(() => {
+    overlay.classList.add('is-revealed')
+    playWelcomeEntrance()
+  }, enterDelay)
 }
 
 const dismissWelcome = () => {
-  overlay.classList.remove('is-active')
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
   if (hintEl) hintEl.style.opacity = ''
+  playWelcomeExit().catch(() => {})
 }
+
+// Scroll arrow → animate overlay out + reveal projects section
+const scrollBtn = overlay.querySelector('[data-testid="welcome-scroll"]')
+let _scrolling = false
+const goToProjects = async () => {
+  if (_scrolling) return
+  _scrolling = true
+  try {
+    await playWelcomeExit()
+  } catch (_) {}
+  overlay.classList.add('is-scrolling-out')
+  revealProjectsSection()
+  setTimeout(() => {
+    overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
+    _scrolling = false
+  }, 950)
+}
+if (scrollBtn) scrollBtn.addEventListener('click', goToProjects)
+
+// Wheel/touch swipe-up while welcome is shown → trigger goToProjects
+let _wheelArmed = false
+const armWheel = () => {
+  if (_wheelArmed) return
+  _wheelArmed = true
+  setTimeout(() => { _wheelArmed = false }, 600)
+}
+window.addEventListener('wheel', (e) => {
+  if (!overlay.classList.contains('is-revealed')) return
+  if (overlay.classList.contains('is-scrolling-out')) return
+  if (e.deltaY > 12) {
+    armWheel()
+    goToProjects()
+  }
+}, { passive: true })
+
+// Public API for admin live-preview & published settings
+window.__welcomeFx = { applyWelcomeLetterFxSettings }
+window.__projects = { fetchAndRenderProjects }
+
+// Initial render of past projects (background prep so they're ready when user scrolls)
+fetchAndRenderProjects()
 
 stageEl.addEventListener('click', (e) => {
   triggerWelcome(e.clientX, e.clientY)

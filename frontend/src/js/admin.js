@@ -30,9 +30,17 @@ const DEFAULTS = {
   welcome_letter_spacing: -0.02,
   welcome_line_spacing: 0.95,
   accent_color: '#ff5722',
-  ripple_speed: 1.0,
-  ripple_tint: 30,
+  ripple_speed: 1.8,
+  ripple_tint: 20,
   ripple_ring_count: 4,
+  welcome_letter_effect: '',
+  welcome_letter_speed: 1.0,
+  welcome_letter_stagger: 0,
+  welcome_letter_density: 'normal',
+  welcome_letter_shapes: 'mix',
+  welcome_letter_fill: true,
+  welcome_letter_use_accent: false,
+  welcome_letter_apply_to: 'heading',
 }
 
 const PANEL_WIDTH_MIN = 320
@@ -257,6 +265,23 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const labelRippleTint = $('[data-testid="admin-ripple-tint-value"]')
   const inputRippleRings = $('[data-testid="admin-ripple-rings"]')
   const rippleEl = document.querySelector('.welcome-overlay__ripple')
+
+  // Letter FX refs (page 2 — decorative letter animation)
+  const inputLetterEffect = $('[data-testid="admin-letter-effect"]')
+  const inputLetterSpeed = $('[data-testid="admin-letter-speed"]')
+  const labelLetterSpeed = $('[data-testid="admin-letter-speed-value"]')
+  const inputLetterStagger = $('[data-testid="admin-letter-stagger"]')
+  const labelLetterStagger = $('[data-testid="admin-letter-stagger-value"]')
+  const inputLetterDensity = $('[data-testid="admin-letter-density"]')
+  const inputLetterShapes = $('[data-testid="admin-letter-shapes"]')
+  const inputLetterFill = $('[data-testid="admin-letter-fill"]')
+  const inputLetterUseAccent = $('[data-testid="admin-letter-use-accent"]')
+  const inputLetterApplyTo = $('[data-testid="admin-letter-apply-to"]')
+
+  // Projects (page 4)
+  const projectsList = $('[data-testid="admin-projects-list"]')
+  const projectsAddBtn = $('[data-testid="admin-projects-add"]')
+  const projectsEmpty = $('[data-testid="admin-projects-empty"]')
   const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
   const inputAccentHex = $('[data-testid="admin-accent-hex"]')
   const swatches = panel.querySelectorAll('.admin-color__swatch')
@@ -401,11 +426,18 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (rippleEl) rippleEl.setAttribute('data-rings', String(rings))
   }
 
+  const applyLetterFx = (s) => {
+    if (window.__welcomeFx && typeof window.__welcomeFx.applyWelcomeLetterFxSettings === 'function') {
+      window.__welcomeFx.applyWelcomeLetterFxSettings(s || {})
+    }
+  }
+
   const applySettings = async (s) => {
     applyAccent(s.accent_color || DEFAULTS.accent_color)
     applyGradient(s)
     applyTextDOM(s)
     applyRippleEffects(s)
+    applyLetterFx(s)
     await applyCubeTextures(s)
   }
 
@@ -458,6 +490,23 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (inputRippleRings) {
       inputRippleRings.value = String(rrings)
     }
+    // Letter FX form fill
+    if (inputLetterEffect) inputLetterEffect.value = s.welcome_letter_effect || ''
+    if (inputLetterSpeed) {
+      const v = (typeof s.welcome_letter_speed === 'number') ? s.welcome_letter_speed : DEFAULTS.welcome_letter_speed
+      inputLetterSpeed.value = v
+      labelLetterSpeed.textContent = `${v.toFixed(2)}×`
+    }
+    if (inputLetterStagger) {
+      const v = (typeof s.welcome_letter_stagger === 'number') ? s.welcome_letter_stagger : DEFAULTS.welcome_letter_stagger
+      inputLetterStagger.value = v
+      labelLetterStagger.textContent = v === 0 ? 'preset' : `${v} ms`
+    }
+    if (inputLetterDensity) inputLetterDensity.value = s.welcome_letter_density || DEFAULTS.welcome_letter_density
+    if (inputLetterShapes) inputLetterShapes.value = s.welcome_letter_shapes || DEFAULTS.welcome_letter_shapes
+    if (inputLetterFill) inputLetterFill.checked = (typeof s.welcome_letter_fill === 'boolean') ? s.welcome_letter_fill : DEFAULTS.welcome_letter_fill
+    if (inputLetterUseAccent) inputLetterUseAccent.checked = (typeof s.welcome_letter_use_accent === 'boolean') ? s.welcome_letter_use_accent : DEFAULTS.welcome_letter_use_accent
+    if (inputLetterApplyTo) inputLetterApplyTo.value = s.welcome_letter_apply_to || DEFAULTS.welcome_letter_apply_to
     const accent = s.accent_color || DEFAULTS.accent_color
     inputAccentPicker.value = accent
     inputAccentHex.value = accent.toUpperCase()
@@ -490,6 +539,14 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     ripple_speed: inputRippleSpeed ? parseFloat(inputRippleSpeed.value) : DEFAULTS.ripple_speed,
     ripple_tint: inputRippleTint ? parseInt(inputRippleTint.value, 10) : DEFAULTS.ripple_tint,
     ripple_ring_count: inputRippleRings ? parseInt(inputRippleRings.value, 10) : DEFAULTS.ripple_ring_count,
+    welcome_letter_effect: inputLetterEffect ? (inputLetterEffect.value || null) : null,
+    welcome_letter_speed: inputLetterSpeed ? parseFloat(inputLetterSpeed.value) : DEFAULTS.welcome_letter_speed,
+    welcome_letter_stagger: inputLetterStagger ? parseInt(inputLetterStagger.value, 10) : DEFAULTS.welcome_letter_stagger,
+    welcome_letter_density: inputLetterDensity ? inputLetterDensity.value : DEFAULTS.welcome_letter_density,
+    welcome_letter_shapes: inputLetterShapes ? inputLetterShapes.value : DEFAULTS.welcome_letter_shapes,
+    welcome_letter_fill: inputLetterFill ? !!inputLetterFill.checked : DEFAULTS.welcome_letter_fill,
+    welcome_letter_use_accent: inputLetterUseAccent ? !!inputLetterUseAccent.checked : DEFAULTS.welcome_letter_use_accent,
+    welcome_letter_apply_to: inputLetterApplyTo ? inputLetterApplyTo.value : DEFAULTS.welcome_letter_apply_to,
     accent_color: inputAccentHex.value.trim() || null,
     logo_url: pendingLogoUrl || published.logo_url || null,
   })
@@ -748,6 +805,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       fillFormFromSettings(published)
       openPanel()
       loadInbox()
+      loadProjects()
     } else {
       openLogin()
     }
@@ -779,6 +837,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       } catch (_) { fillFormFromSettings(published) }
       openPanel()
       loadInbox()
+      loadProjects()
     } catch (err) {
       setLoginStatus(err.message || 'Login failed')
     } finally {
@@ -888,6 +947,176 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     inputRippleRings.addEventListener('change', () => {
       const v = parseInt(inputRippleRings.value, 10)
       if (rippleEl) rippleEl.setAttribute('data-rings', String(v))
+    })
+  }
+
+  // Letter FX live preview — re-build Word objects when any control changes
+  const liveApplyLetterFx = () => {
+    const partial = collectFormSettings()
+    if (window.__welcomeFx && typeof window.__welcomeFx.applyWelcomeLetterFxSettings === 'function') {
+      window.__welcomeFx.applyWelcomeLetterFxSettings(partial)
+    }
+  }
+  if (inputLetterEffect) inputLetterEffect.addEventListener('change', liveApplyLetterFx)
+  if (inputLetterSpeed) inputLetterSpeed.addEventListener('input', () => {
+    const v = parseFloat(inputLetterSpeed.value)
+    if (labelLetterSpeed) labelLetterSpeed.textContent = `${v.toFixed(2)}×`
+    liveApplyLetterFx()
+  })
+  if (inputLetterStagger) inputLetterStagger.addEventListener('input', () => {
+    const v = parseInt(inputLetterStagger.value, 10)
+    if (labelLetterStagger) labelLetterStagger.textContent = v === 0 ? 'preset' : `${v} ms`
+    liveApplyLetterFx()
+  })
+  if (inputLetterDensity) inputLetterDensity.addEventListener('change', liveApplyLetterFx)
+  if (inputLetterShapes) inputLetterShapes.addEventListener('change', liveApplyLetterFx)
+  if (inputLetterFill) inputLetterFill.addEventListener('change', liveApplyLetterFx)
+  if (inputLetterUseAccent) inputLetterUseAccent.addEventListener('change', liveApplyLetterFx)
+  if (inputLetterApplyTo) inputLetterApplyTo.addEventListener('change', liveApplyLetterFx)
+
+  // ===================== Page 4 — Projects CRUD =====================
+  const _pEsc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
+  const _projectInitial = (t) => {
+    const c = String(t || '').trim().replace(/[^A-Za-z0-9]/g, '')
+    return c ? c[0].toUpperCase() : '?'
+  }
+
+  const renderProjectRow = (project) => {
+    const row = document.createElement('div')
+    row.className = 'admin-project-row'
+    row.setAttribute('data-id', project.id)
+    row.setAttribute('data-testid', `admin-project-${project.id}`)
+    const thumbStyle = project.image_url
+      ? `style="background-image:url('${_pEsc(project.image_url)}');"`
+      : ''
+    row.innerHTML = `
+      <div class="admin-project-row__head">
+        <div class="admin-project-row__thumb" ${thumbStyle}>${project.image_url ? '' : _pEsc(_projectInitial(project.title))}</div>
+        <div class="admin-project-row__heading">
+          <input class="admin-project-row__title-input" data-field="title" value="${_pEsc(project.title || '')}" placeholder="Project title" maxlength="120" />
+        </div>
+      </div>
+      <div class="admin-project-row__meta">
+        <input class="admin-project-row__meta-year" data-field="year" type="number" value="${_pEsc(project.year || '')}" placeholder="Year" min="1900" max="2100" />
+        <input class="admin-project-row__meta-order" data-field="sort_order" type="number" value="${_pEsc(project.sort_order || '')}" placeholder="Order" min="0" max="9999" />
+      </div>
+      <textarea class="admin-project-row__desc" data-field="description" placeholder="Short description (max 400 chars)" maxlength="400">${_pEsc(project.description || '')}</textarea>
+      <div class="admin-project-row__actions">
+        <label class="upload" data-testid="admin-project-upload-${project.id}">
+          ${project.image_url ? 'Replace image' : 'Upload image'}
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+        </label>
+        <button type="button" class="is-save" data-testid="admin-project-save-${project.id}">Save</button>
+        <button type="button" class="is-delete" data-testid="admin-project-delete-${project.id}">Delete</button>
+      </div>
+    `
+    // Handlers
+    const saveBtn = row.querySelector('.is-save')
+    const delBtn = row.querySelector('.is-delete')
+    const uploadInput = row.querySelector('input[type="file"]')
+
+    const collectRow = () => {
+      const fields = {}
+      row.querySelectorAll('[data-field]').forEach((el) => {
+        const k = el.getAttribute('data-field')
+        let v = el.value
+        if (k === 'year' || k === 'sort_order') v = v === '' ? null : parseInt(v, 10)
+        fields[k] = v
+      })
+      return fields
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      const data = collectRow()
+      try {
+        await apiFetch(`/api/admin/projects/${project.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }, token)
+        setPanelStatus('Saved', 'success')
+        loadProjects()
+        if (window.__projects) window.__projects.fetchAndRenderProjects()
+      } catch (err) {
+        setPanelStatus(err.message || 'Save failed', 'error')
+      }
+    })
+
+    delBtn.addEventListener('click', async () => {
+      if (!window.confirm(`Delete "${project.title}"? This cannot be undone.`)) return
+      try {
+        await apiFetch(`/api/admin/projects/${project.id}`, { method: 'DELETE' }, token)
+        loadProjects()
+        if (window.__projects) window.__projects.fetchAndRenderProjects()
+      } catch (err) {
+        setPanelStatus(err.message || 'Delete failed', 'error')
+      }
+    })
+
+    uploadInput.addEventListener('change', async () => {
+      if (!uploadInput.files || !uploadInput.files[0]) return
+      const fd = new FormData()
+      fd.append('file', uploadInput.files[0])
+      try {
+        const res = await fetch('/api/admin/projects/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: fd,
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.detail || `Upload failed (${res.status})`)
+        }
+        const json = await res.json()
+        // Persist the new image_url on the project immediately
+        await apiFetch(`/api/admin/projects/${project.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ image_url: json.image_url }),
+        }, token)
+        setPanelStatus('Image uploaded', 'success')
+        loadProjects()
+        if (window.__projects) window.__projects.fetchAndRenderProjects()
+      } catch (err) {
+        setPanelStatus(err.message || 'Upload failed', 'error')
+      }
+    })
+    return row
+  }
+
+  const loadProjects = async () => {
+    if (!projectsList) return
+    try {
+      const rows = await apiFetch('/api/projects', {}, token)
+      projectsList.innerHTML = ''
+      if (!rows || rows.length === 0) {
+        if (projectsEmpty) projectsEmpty.hidden = false
+        return
+      }
+      if (projectsEmpty) projectsEmpty.hidden = true
+      rows.forEach((p) => projectsList.appendChild(renderProjectRow(p)))
+    } catch (err) {
+      setPanelStatus(err.message || 'Could not load projects', 'error')
+    }
+  }
+
+  if (projectsAddBtn) {
+    projectsAddBtn.addEventListener('click', async () => {
+      try {
+        await apiFetch('/api/admin/projects', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: 'New project',
+            year: new Date().getFullYear(),
+            description: '',
+          }),
+        }, token)
+        loadProjects()
+        if (window.__projects) window.__projects.fetchAndRenderProjects()
+      } catch (err) {
+        setPanelStatus(err.message || 'Add failed', 'error')
+      }
     })
   }
 
