@@ -19,7 +19,17 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
-### Phase 14.5 (Feb 2026) — DecorativeLetterAnimations on Welcome ↔ About transition
+### Phase 14.6 (Feb 2026) — Hybrid continuous scroll + threshold-triggered DecorativeLetterAnimations
+User feedback: "I'm seeing the cube flash at some instances when I scroll back to the welcome. Do a Hybrid (continuous scroll + letter FX triggers as you cross the threshold)."
+- **Continuous scroll layout** — Welcome is `position: fixed; z-index: 50` covering the first viewport; About is `position: relative; margin-top: 100vh; z-index: 70` flowing below. Document height = 200vh (welcome + about). Body becomes `is-scrollable` automatically ~600 ms after the welcome entrance completes.
+- **Threshold-driven letter FX** — A single `window.scroll` listener (rAF-debounced) plays `playAboutExit()` once when scrollY crosses **30 vh** (welcome heading letters + decorative shapes scatter), and plays `playAboutEntrance()` once when scrolling back below **10 vh**. The trigger uses an internal `_aboutFxState` flag so each direction fires once per crossing.
+- **No cube flash** — the previous implementation faded the welcome to opacity 0, briefly exposing the WebGL cube behind it. The hybrid keeps the welcome at full opacity throughout; About's solid `var(--color-bg)` background fully covers the welcome (and cube) as it scrolls into view. Verified visually at y=0/100/300/500/700/900/1080 with `welcome_opacity: 1` at every position.
+- **Scroll arrow** smooth-scrolls to About's top. **About's "Back" button** smooth-scrolls to top (lets the threshold-triggered letter ENTRANCE play naturally as the user crosses 10 vh going up). **Welcome's small back arrow** dismisses the entire scroll-mode + welcome to cube.
+- **Past Projects button** unchanged — still calls `_exitOverlay` (welcome's slide-up + letter exit) and reveals the projects grid as a separate route.
+- **CSS layout fix** — `html.is-scrollable, body.is-scrollable { height: auto !important; min-height: 100% }` was needed because the base `html, body { height: 100% }` was capping body height at viewport, preventing native scrolling even with `overflow-y: auto`.
+
+### Phase 14.5 (Feb 2026) — DecorativeLetterAnimations on Welcome ↔ About transition (superseded by 14.6)
+The discrete-transition flow was upgraded to a continuous scroll. Admin Page 5 controls (`about_transition_effect` dropdown + `about_transition_speed` slider) and the underlying `playAboutExit/playAboutEntrance` API in `welcomeFx.js` are unchanged — they're now triggered by scroll thresholds instead of explicit goToAbout/goBackToWelcome calls.
 User feedback: "What happened to the DecorativeLetterAnimations github i gave u to use? I want it so that when i barely scroll my mouse twice to go to the about section it animates-out using the DecorativeLetterAnimations and then fade in the about section. This should have sliders and a dropbox to pick animation styles." User confirmed: bidirectional (a) — scroll back up reverses with letter entrance.
 - **Welcome → About transition** now plays the DecorativeLetterAnimations EXIT (per-letter swirl + decorative shapes scattering) on the welcome heading, then fades the welcome to opacity 0 (`is-faded` class). About fades in over it (`position: fixed; inset: 0; z-index: 70`).
 - **About → Welcome reverse** — at the top of About (`scrollTop ≤ 2`), wheel-up (deltaY < -10) OR clicking the back button replays the letter ENTRANCE animation, restoring the welcome.

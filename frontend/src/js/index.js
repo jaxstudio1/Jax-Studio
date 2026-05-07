@@ -266,6 +266,10 @@ const triggerWelcome = (clientX, clientY) => {
   setTimeout(() => {
     overlay.classList.add('is-revealed')
     playWelcomeEntrance()
+    // Hybrid scroll mode: enable body scrolling + reveal about ~600 ms after
+    // the letter entrance starts. The user can then scroll naturally; the
+    // global scroll listener fires letter exit/entrance at threshold crossings.
+    setTimeout(() => { enterAboutScrollMode() }, 600)
   }, enterDelay)
 }
 
@@ -293,47 +297,79 @@ const _exitOverlay = async () => {
   return true
 }
 
-// Scroll → goes to ABOUT.
-// Plays the DecorativeLetterAnimations EXIT animation on the welcome heading
-// (using `about_transition_effect` if set, else falls back to the welcome
-// entrance effect), then fades the welcome out and the About section in.
-// Scrolling back up at the top of About reverses the whole thing
-// (DecorativeLetterAnimations ENTRANCE re-plays).
-const goToAbout = async () => {
-  if (_scrolling) return
-  _scrolling = true
-  hideProjectsSection()
-  overlay.classList.remove('is-scrolling-out', 'is-pinned')
-  overlay.classList.add('is-exiting')
-  try { await playAboutExit() } catch (_) {}
-  overlay.classList.remove('is-exiting')
-  overlay.classList.add('is-faded')
+// === HYBRID Welcome ↔ About scroll ====================================
+// The page is a single continuous scroll: welcome is `position: fixed`
+// covering the first viewport, about is `position: relative` flowing below
+// at `margin-top: 100vh` with z-index higher so it scrolls UP OVER the
+// fixed welcome. Letter FX exit fires once when the user scrolls past
+// THRESHOLD_DOWN (~30vh); entrance fires once when scrolling back below
+// THRESHOLD_UP (~10vh). Welcome stays at full opacity throughout — the
+// about's solid background covers the cube as it rises, no flash.
+
+let _aboutFxState = 'entrance' // 'entrance' = welcome letters visible, 'exit' = letters hidden
+let _scrollTicking = false
+
+const enterAboutScrollMode = () => {
+  // Called once after the welcome entrance animation completes. Reveals
+  // about in flow + enables body scroll. Idempotent.
+  if (document.body.classList.contains('is-scrollable')) return
+  document.documentElement.classList.add('is-scrollable')
+  document.body.classList.add('is-scrollable')
   revealAboutSection()
+}
+
+const exitAboutScrollMode = () => {
+  document.documentElement.classList.remove('is-scrollable')
+  document.body.classList.remove('is-scrollable')
+  hideAboutSection()
+  window.scrollTo({ top: 0, behavior: 'instant' })
+  _aboutFxState = 'entrance'
+}
+
+const onScrollHybrid = () => {
+  if (_scrollTicking) return
+  _scrollTicking = true
+  requestAnimationFrame(() => {
+    _scrollTicking = false
+    if (!overlay.classList.contains('is-revealed')) return
+    if (!document.body.classList.contains('is-scrollable')) return
+    const y = window.scrollY
+    const vh = window.innerHeight
+    const downAt = vh * 0.30
+    const upAt = vh * 0.10
+    if (_aboutFxState === 'entrance' && y > downAt) {
+      _aboutFxState = 'exit'
+      playAboutExit().catch(() => {})
+    } else if (_aboutFxState === 'exit' && y < upAt) {
+      _aboutFxState = 'entrance'
+      playAboutEntrance().catch(() => {})
+    }
+  })
+}
+window.addEventListener('scroll', onScrollHybrid, { passive: true })
+
+// Scroll arrow click → smooth scroll down to the about section
+const goToAbout = () => {
+  enterAboutScrollMode()
+  // Two rAFs so display:block + body.is-scrollable settle, then scroll smooth
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const target = document.querySelector('[data-testid="about-section"]')
+      if (!target) return
+      const top = target.getBoundingClientRect().top + window.scrollY
+      try { window.scrollTo({ top, behavior: 'smooth' }) }
+      catch (_) { window.scrollTo(0, top) }
+    })
+  })
   if (window.history && window.history.pushState) {
     try { window.history.pushState({ route: 'about' }, '', '#about') } catch (_) {}
   }
-  setTimeout(() => { _scrolling = false }, 400)
 }
 
-// Reverse — scroll back up at top of about → fade about out, restore welcome,
-// re-play letter ENTRANCE.
-const goBackToWelcome = async () => {
-  if (_scrolling) return
-  _scrolling = true
-  hideAboutSection()
-  // Wait for about's fade-out
-  await new Promise((res) => setTimeout(res, 600))
-  overlay.classList.remove('is-faded')
-  try { await playAboutEntrance() } catch (_) {}
-  if (window.history && window.history.pushState) {
-    try { window.history.pushState({ route: 'home' }, '', window.location.pathname) } catch (_) {}
-  }
-  setTimeout(() => { _scrolling = false }, 200)
-}
-
-// "Past Projects" button → dedicated route.
+// "Past Projects" button → dedicated route (welcome's existing exit + slide-up).
 const goToProjects = async () => {
   if (_scrolling) return
+  exitAboutScrollMode()
   await _exitOverlay()
   hideAboutSection()
   revealProjectsSection()
@@ -344,8 +380,7 @@ const goToProjects = async () => {
 
 // Back button on welcome — animate to cube
 const backToCube = () => {
-  // The welcome's small back arrow only fires when the welcome is the active
-  // overlay (cube state). On the about route the about-back button is used.
+  exitAboutScrollMode()
   overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
   if (hintEl) hintEl.style.opacity = ''
   playWelcomeExit().catch(() => {})
@@ -354,15 +389,19 @@ const backToCube = () => {
 // Back button on projects/about — return to home (cube + welcome dismissed)
 const backToHome = () => {
   hideProjectsSection()
-  hideAboutSection()
-  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting', 'is-faded', 'is-pinned')
-  document.documentElement.classList.remove('is-scrollable')
-  document.body.classList.remove('is-scrollable')
+  exitAboutScrollMode()
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
   if (hintEl) hintEl.style.opacity = ''
-  window.scrollTo({ top: 0, behavior: 'instant' })
   if (window.history && window.history.pushState) {
     try { window.history.pushState({ route: 'home' }, '', window.location.pathname) } catch (_) {}
   }
+}
+
+// "Back" button on About — smooth scroll to top so the welcome letter FX
+// entrance plays naturally as the threshold is crossed.
+const aboutBackToTop = () => {
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  catch (_) { window.scrollTo(0, 0) }
 }
 
 const scrollBtn = overlay.querySelector('[data-testid="welcome-scroll"]')
@@ -374,101 +413,39 @@ if (scrollBtn) scrollBtn.addEventListener('click', goToAbout)
 if (projectsBtn) projectsBtn.addEventListener('click', goToProjects)
 if (welcomeBackBtn) welcomeBackBtn.addEventListener('click', backToCube)
 if (projectsBackBtn) projectsBackBtn.addEventListener('click', backToHome)
-if (aboutBackBtn) aboutBackBtn.addEventListener('click', goBackToWelcome)
-
-// Wheel-up at the very top of the About overlay → reverse back to welcome
-// (DecorativeLetterAnimations ENTRANCE plays). The about element is itself
-// the scroll container (overflow-y: auto), so we listen on it.
-const aboutEl = document.querySelector('[data-testid="about-section"]')
-if (aboutEl) {
-  let _aboutWheelArmed = false
-  aboutEl.addEventListener('wheel', (e) => {
-    if (!aboutEl.classList.contains('is-active')) return
-    if (_scrolling) return
-    if (aboutEl.scrollTop <= 2 && e.deltaY < -10 && !_aboutWheelArmed) {
-      _aboutWheelArmed = true
-      setTimeout(() => { _aboutWheelArmed = false }, 800)
-      goBackToWelcome()
-    }
-  }, { passive: true })
-
-  // Touch swipe-down at top of about → same reverse
-  let _aboutTouchY = null
-  aboutEl.addEventListener('touchstart', (e) => {
-    if (e.touches && e.touches.length > 0) _aboutTouchY = e.touches[0].clientY
-  }, { passive: true })
-  aboutEl.addEventListener('touchmove', (e) => {
-    if (_aboutTouchY == null) return
-    if (!aboutEl.classList.contains('is-active')) return
-    if (_scrolling) return
-    if (aboutEl.scrollTop > 2) return
-    const dy = (e.touches && e.touches[0] ? e.touches[0].clientY : _aboutTouchY) - _aboutTouchY
-    if (dy > 50) {
-      _aboutTouchY = null
-      goBackToWelcome()
-    }
-  }, { passive: true })
-}
+if (aboutBackBtn) aboutBackBtn.addEventListener('click', aboutBackToTop)
 
 // Hash-deeplink — open /projects or /about directly
 window.addEventListener('popstate', (e) => {
   const hash = (window.location.hash || '').replace('#', '')
   if (hash === 'projects') {
     hideAboutSection()
-    overlay.classList.remove('is-faded')
     revealProjectsSection()
   }
   else if (hash === 'about') {
     hideProjectsSection()
-    overlay.classList.add('is-active', 'is-revealed', 'is-faded')
-    revealAboutSection()
+    overlay.classList.add('is-active', 'is-revealed')
+    enterAboutScrollMode()
   }
   else {
     hideProjectsSection()
-    hideAboutSection()
-    overlay.classList.remove('is-active', 'is-revealed', 'is-faded')
-    document.body.classList.remove('is-scrollable')
-    document.documentElement.classList.remove('is-scrollable')
+    exitAboutScrollMode()
+    overlay.classList.remove('is-active', 'is-revealed')
     window.scrollTo({ top: 0 })
   }
 })
 
-// Wheel/touch swipe-up while welcome is shown → trigger goToAbout
-let _wheelArmed = false
-const armWheel = () => {
-  if (_wheelArmed) return
-  _wheelArmed = true
-  setTimeout(() => { _wheelArmed = false }, 600)
-}
-window.addEventListener('wheel', (e) => {
-  if (!overlay.classList.contains('is-revealed')) return
-  if (overlay.classList.contains('is-scrolling-out')) return
-  // Don't double-fire while welcome is faded (about is on top)
-  if (overlay.classList.contains('is-faded')) return
-  const thresh = (window.__motion && window.__motion.wheelThresh) || 12
-  if (e.deltaY > thresh) {
-    armWheel()
-    goToAbout()
-  }
-}, { passive: true })
+// In hybrid mode the welcome enables `body.is-scrollable` after the entrance
+// completes (see triggerWelcome below). Native scroll then drives everything
+// — the global scroll listener (onScrollHybrid) plays the letter FX exit
+// when the user crosses ~30vh down and the entrance when crossing back below
+// ~10vh. No manual wheel/touch handlers needed for the welcome→about path.
 
 // Touch swipe-up — primary path on mobile (no wheel events)
 let _touchStartY = null
 overlay.addEventListener('touchstart', (e) => {
   if (!overlay.classList.contains('is-revealed')) return
   if (e.touches && e.touches.length > 0) _touchStartY = e.touches[0].clientY
-}, { passive: true })
-overlay.addEventListener('touchmove', (e) => {
-  if (_touchStartY == null) return
-  if (!overlay.classList.contains('is-revealed')) return
-  if (overlay.classList.contains('is-scrolling-out')) return
-  if (overlay.classList.contains('is-faded')) return
-  const dy = _touchStartY - (e.touches && e.touches[0] ? e.touches[0].clientY : _touchStartY)
-  const thresh = (window.__motion && window.__motion.swipeThresh) || 36
-  if (dy > thresh) {
-    _touchStartY = null
-    goToAbout()
-  }
 }, { passive: true })
 overlay.addEventListener('touchend', () => { _touchStartY = null }, { passive: true })
 
@@ -491,11 +468,18 @@ fetchAndRenderProjects()
 // Hash-deeplink on initial load
 const _initialHash = (window.location.hash || '').replace('#', '')
 if (_initialHash === 'projects') {
-  overlay.classList.remove('is-active', 'is-revealed', 'is-pinned', 'is-faded')
+  overlay.classList.remove('is-active', 'is-revealed')
   setTimeout(() => revealProjectsSection(), 100)
 } else if (_initialHash === 'about') {
-  overlay.classList.add('is-active', 'is-revealed', 'is-faded')
-  setTimeout(() => revealAboutSection(), 100)
+  overlay.classList.add('is-active', 'is-revealed')
+  setTimeout(() => {
+    enterAboutScrollMode()
+    const t = document.querySelector('[data-testid="about-section"]')
+    if (t) {
+      const top = t.getBoundingClientRect().top + window.scrollY
+      try { window.scrollTo({ top, behavior: 'instant' }) } catch (_) { window.scrollTo(0, top) }
+    }
+  }, 100)
 }
 
 stageEl.addEventListener('click', (e) => {

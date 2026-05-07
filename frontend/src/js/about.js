@@ -93,16 +93,10 @@ export const revealAboutSection = () => {
   if (!section) return
   section.classList.add('is-active')
   section.setAttribute('aria-hidden', 'false')
-  // double rAF so display:block lands before the opacity transition triggers
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      section.classList.add('is-fading-in')
-    })
-  })
 }
 
 export const hideAboutSection = () => {
   if (!section) return
-  section.classList.remove('is-active', 'is-fading-in')
+  section.classList.remove('is-active')
   section.setAttribute('aria-hidden', 'true')
 }

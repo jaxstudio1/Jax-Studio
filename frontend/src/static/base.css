@@ -553,16 +553,27 @@ main {
 .about .projects__back { top: 5.6rem; left: 2.6rem; }
 @media (max-width: 720px) { .about .projects__back { top: 5rem; left: 1.4rem; } }
 
-/* === About is a FIXED full-viewport overlay that fades in OVER the welcome.
-   The welcome stays in DOM behind it (faded via .is-faded). When the user
-   scrolls back up to the top of about and wheels up, About fades out and
-   the welcome's letter-FX entrance plays again. */
+/* === About section — flows in document below welcome (margin-top: 100vh).
+   Welcome overlay stays `position: fixed`; About scrolls UP over it as the
+   user wheels down. Solid background fully covers the cube — no flash.
+   Letter FX exit/entrance fires on scroll-threshold crossings (hybrid). */
+.about {
+  position: relative;
+  z-index: 70; /* above welcome (50) and cube */
+  background: var(--color-bg);
+  padding: 7rem 1.5rem 6rem;
+  min-height: 100vh;
+  margin-top: 100vh; /* sits below the fixed-welcome viewport */
+  display: none;
+}
+.about.is-active { display: block; }
 html.is-scrollable,
 body.is-scrollable {
   overflow-y: auto !important;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  height: auto;
+  height: auto !important;
+  min-height: 100%;
   scroll-behavior: smooth;
 }
 body.is-scrollable main {
@@ -700,23 +711,20 @@ body.is-scrollable .content { touch-action: auto; }
 
 /* === About section === */
 .about {
-  position: fixed;
-  inset: 0;
-  z-index: 70; /* above welcome (50) — fades in over it */
+  position: relative;
+  z-index: 70;
   background: var(--color-bg);
   padding: 7rem 1.5rem 6rem;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.6s ease;
+  min-height: 100vh;
+  margin-top: 100vh;
   display: none;
 }
 .about.is-active { display: block; }
-.about.is-active.is-fading-in { opacity: 1; pointer-events: auto; }
 
-/* Welcome overlay fade-out while about takes over */
-.welcome-overlay.is-faded { opacity: 0 !important; pointer-events: none; }
+/* Welcome overlay no longer fades during about transition — it stays opaque
+   so the cube behind never flashes. Letters are animated by playAboutExit/
+   Entrance instead. (The is-faded class is kept for backwards-compat but no
+   longer applied by the new hybrid scroll flow.) */
 .about__inner { max-width: 1280px; margin: 0 auto; }
 .about__head { margin-bottom: 4rem; max-width: 980px; }
 .about__eyebrow {
