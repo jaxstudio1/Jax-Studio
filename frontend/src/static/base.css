@@ -548,13 +548,28 @@ main {
   100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
 }
 
-/* === Past Projects section === */
+/* About-section back button — sits LOWER (below the JAX STUDIO brand) so it
+   doesn't visually collide with the top-left frame title. Reuses the
+   .projects__back base styling but overrides position. */
+.about .projects__back { top: 5.6rem; left: 2.6rem; }
+@media (max-width: 720px) { .about .projects__back { top: 5rem; left: 1.4rem; } }
+
+/* === When the user is on the About route, the welcome overlay STAYS fixed
+   at the top of the viewport (z-index 50). The About section sits below it
+   in the document (margin-top: 100vh) with a HIGHER z-index so it scrolls
+   up OVER the fixed welcome — letting the user scroll back up to revisit
+   the welcome view at any time. */
+body.is-scrollable .about.is-active {
+  margin-top: 100vh;
+  z-index: 60;
+}
 html.is-scrollable,
 body.is-scrollable {
   overflow-y: auto !important;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   height: auto;
+  scroll-behavior: smooth;
 }
 body.is-scrollable main {
   overflow: visible;

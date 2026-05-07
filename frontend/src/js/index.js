@@ -293,15 +293,23 @@ const _exitOverlay = async () => {
   return true
 }
 
-// Scroll → goes to ABOUT (the new default scroll-target).
+// Scroll → goes to ABOUT. We do NOT slide the welcome overlay off-screen.
+// The welcome overlay stays `position: fixed` at the top, and the About
+// section sits below in document flow (margin-top: 100vh, z-index higher)
+// so it scrolls UP OVER the welcome. Result: user can scroll back up at any
+// time to revisit the welcome view.
 const goToAbout = async () => {
   if (_scrolling) return
-  await _exitOverlay()
+  _scrolling = true
   hideProjectsSection()
+  overlay.classList.remove('is-scrolling-out', 'is-exiting', 'is-pinned')
+  document.documentElement.classList.add('is-scrollable')
+  document.body.classList.add('is-scrollable')
   revealAboutSection()
   if (window.history && window.history.pushState) {
     try { window.history.pushState({ route: 'about' }, '', '#about') } catch (_) {}
   }
+  setTimeout(() => { _scrolling = false }, 300)
 }
 
 // "Past Projects" button → dedicated route.
@@ -317,6 +325,11 @@ const goToProjects = async () => {
 
 // Back button on welcome — animate to cube
 const backToCube = () => {
+  // If we're in scroll-mode (about route), treat back as full-home reset
+  if (document.body.classList.contains('is-scrollable')) {
+    backToHome()
+    return
+  }
   overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
   if (hintEl) hintEl.style.opacity = ''
   playWelcomeExit().catch(() => {})
@@ -326,8 +339,10 @@ const backToCube = () => {
 const backToHome = () => {
   hideProjectsSection()
   hideAboutSection()
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out', 'is-exiting')
   document.documentElement.classList.remove('is-scrollable')
   document.body.classList.remove('is-scrollable')
+  if (hintEl) hintEl.style.opacity = ''
   window.scrollTo({ top: 0, behavior: 'instant' })
   if (window.history && window.history.pushState) {
     try { window.history.pushState({ route: 'home' }, '', window.location.pathname) } catch (_) {}
@@ -348,9 +363,27 @@ if (aboutBackBtn) aboutBackBtn.addEventListener('click', backToHome)
 // Hash-deeplink — open /projects or /about directly
 window.addEventListener('popstate', (e) => {
   const hash = (window.location.hash || '').replace('#', '')
-  if (hash === 'projects') { hideAboutSection(); revealProjectsSection() }
-  else if (hash === 'about') { hideProjectsSection(); revealAboutSection() }
-  else { hideProjectsSection(); hideAboutSection(); document.body.classList.remove('is-scrollable'); document.documentElement.classList.remove('is-scrollable'); window.scrollTo({ top: 0 }) }
+  if (hash === 'projects') {
+    hideAboutSection()
+    overlay.classList.remove('is-pinned')
+    revealProjectsSection()
+  }
+  else if (hash === 'about') {
+    hideProjectsSection()
+    overlay.classList.remove('is-pinned')
+    overlay.classList.add('is-active', 'is-revealed')
+    document.documentElement.classList.add('is-scrollable')
+    document.body.classList.add('is-scrollable')
+    revealAboutSection()
+  }
+  else {
+    hideProjectsSection()
+    hideAboutSection()
+    overlay.classList.remove('is-pinned', 'is-active', 'is-revealed')
+    document.body.classList.remove('is-scrollable')
+    document.documentElement.classList.remove('is-scrollable')
+    window.scrollTo({ top: 0 })
+  }
 })
 
 // Wheel/touch swipe-up while welcome is shown → trigger goToAbout
@@ -363,6 +396,9 @@ const armWheel = () => {
 window.addEventListener('wheel', (e) => {
   if (!overlay.classList.contains('is-revealed')) return
   if (overlay.classList.contains('is-scrolling-out')) return
+  // Once we're on the About route (body is-scrollable), let the page scroll
+  // naturally between welcome and About — don't re-trigger goToAbout.
+  if (document.body.classList.contains('is-scrollable')) return
   const thresh = (window.__motion && window.__motion.wheelThresh) || 12
   if (e.deltaY > thresh) {
     armWheel()
@@ -380,6 +416,8 @@ overlay.addEventListener('touchmove', (e) => {
   if (_touchStartY == null) return
   if (!overlay.classList.contains('is-revealed')) return
   if (overlay.classList.contains('is-scrolling-out')) return
+  // On the About route — let native touch scrolling work between welcome and about
+  if (document.body.classList.contains('is-scrollable')) return
   const dy = _touchStartY - (e.touches && e.touches[0] ? e.touches[0].clientY : _touchStartY)
   const thresh = (window.__motion && window.__motion.swipeThresh) || 36
   if (dy > thresh) {
@@ -408,10 +446,13 @@ fetchAndRenderProjects()
 const _initialHash = (window.location.hash || '').replace('#', '')
 if (_initialHash === 'projects') {
   // Hide overlay completely so projects route is the landing
-  overlay.classList.remove('is-active', 'is-revealed')
+  overlay.classList.remove('is-active', 'is-revealed', 'is-pinned')
   setTimeout(() => revealProjectsSection(), 100)
 } else if (_initialHash === 'about') {
-  overlay.classList.remove('is-active', 'is-revealed')
+  // Show welcome AND about — user can scroll between them
+  overlay.classList.add('is-active', 'is-revealed')
+  document.documentElement.classList.add('is-scrollable')
+  document.body.classList.add('is-scrollable')
   setTimeout(() => revealAboutSection(), 100)
 }
 

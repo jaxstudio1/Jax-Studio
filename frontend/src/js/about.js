@@ -95,8 +95,21 @@ export const revealAboutSection = () => {
   section.setAttribute('aria-hidden', 'false')
   document.documentElement.classList.add('is-scrollable')
   document.body.classList.add('is-scrollable')
+  // Scroll to About's position. We use getBoundingClientRect+scrollY because
+  // about's offsetTop can read 0 due to margin-collapsing through the
+  // ancestor chain (main has no padding/border, so about's `margin-top: 100vh`
+  // collapses with main's margin and offsetTop becomes 0).
+  const doScroll = () => {
+    const rect = section.getBoundingClientRect()
+    const top = rect.top + window.scrollY
+    if (top > 1) window.scrollTo(0, top)
+  }
   requestAnimationFrame(() => {
-    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    requestAnimationFrame(() => {
+      doScroll()
+      // Re-attempt once more after a beat in case the first call raced layout
+      setTimeout(doScroll, 80)
+    })
   })
 }
 
