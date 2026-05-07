@@ -1,0 +1,36 @@
+{
+  "summary": "Verified server-side settings injection (serve.js Express server) + new designer-rendered og-image.png. Curl: GET / returns text/html with <script>window.__INITIAL_SETTINGS__={...}</script> injected just before </head>; Cache-Control: 'no-store, no-cache, must-revalidate'. After publishing accent_color=#22c55e + brand_tagline='Custom Tag SSR', a fresh page load with cleared localStorage shows the custom values from the very first paint — Playwright confirmed window.__INITIAL_SETTINGS__.accent_color === '#22c55e' immediately after navigation, --accent CSS variable resolved to #22c55e, body class 'settings-ready' applied, GET IN TOUCH badge dot rendered green, and 'CUSTOM TAG SSR' visible bottom-right (zero flash of orange/Coming Soon). og-image.png served as 1200x630 PNG, content-length 124387 bytes (~124KB, matches Pillow output spec); <meta property=\"og:image\" content=\"og-image.png\"> still present in served HTML. main.js served with content-type application/javascript (200). SPA fallback: GET /random-route-xyz returns 200 with HTML containing both <html and __INITIAL_SETTINGS__. Backend pytest: 41/41 passed (38 existing + 3 webhook signature tests).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified_behaviors": {
+    "ssr_injection_curl": "curl https://store-preview-site.preview.emergentagent.com/ → contains <script>window.__INITIAL_SETTINGS__={...}</script> immediately before </head>",
+    "cache_control_no_store": "Cache-Control: no-store, no-cache, must-revalidate on /",
+    "ssr_custom_values_visible_first_paint": "Published accent_color=#22c55e + brand_tagline='Custom Tag SSR' → window.__INITIAL_SETTINGS__ contains them on initial DOMContentLoaded; --accent CSS var = #22c55e; body class 'settings-ready'; tagline 'CUSTOM TAG SSR' rendered in bottom-right; GET IN TOUCH dot rendered green (visual screenshot confirms zero flash of orange)",
+    "og_image_designer_rendered": "GET /og-image.png → 200, image/png, 1200x630, 124387 bytes (matches /app/scripts/build_og_image.py Pillow spec ~124KB)",
+    "og_image_meta_in_html": "<meta property=\"og:image\" content=\"og-image.png\"> + og:image:width=1200 + og:image:height=630 in served HTML",
+    "static_main_js_ok": "GET /main.js → 200, content-type application/javascript; charset=UTF-8",
+    "spa_fallback": "GET /random-route-xyz → 200 with HTML containing both <html and __INITIAL_SETTINGS__ (serve.js fallthrough handler injects)",
+    "graceful_settings_fallback": "When backend returns null fields, JSON is still injected (verified all keys present even when values are null)",
+    "backend_pytest_41_41": "All 41 backend tests pass (TestPublic, TestAuth, TestAboutSettings, TestAboutTransitionSettings, TestAccessEnabled, TestAboutUpload, TestProjects, TestContact, TestAdminContacts, TestWebhookAuth, test_webhook_signature)"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend_api.py",
+    "/app/backend/tests/test_webhook_signature.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "serve.js fetch timeout (1.5s) is reasonable, but on timeout the HTML is sent WITHOUT the injection tag (no fallback object) — first-time visitors during a backend hiccup would briefly see bundled defaults before client-side /api/settings fetch resolves. Acceptable trade-off (graceful fallback) but worth a JSDoc note saying 'no injection on timeout'.",
+    "serve.js reads index.html on every request via fs.readFileSync (line 28-30) — fine for a single-pod low-traffic site, but for higher load consider caching the file content with an fs.watch invalidation hook. Comment in code already acknowledges this is intentional (so admin Publish reflects without restarting server, though Publish only changes settings, not index.html).",
+    "Cache-Control on / sends 'no-store, no-cache, must-revalidate' — serve.js source only sets 'no-store, must-revalidate' (line 67). The extra 'no-cache' is being added by the upstream proxy (Cloudflare/k8s ingress). Behavior is correct (no stale HTML), but worth documenting that two layers are setting it.",
+    "</script> escape regex in injectInitialSettings (line 48) is correctly case-insensitive — good defensive coding for stored settings strings that could contain markup.",
+    "/app/frontend/src/js/index.js continues to grow (carry-over from previous iterations) — modularising admin/welcome/about/access/settings into ES modules still recommended."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (41/41 pytest)", "frontend": "100% (SSR injection, cache headers, og-image bytes/dimensions, og:image meta, static assets, SPA fallback, custom-published-values-from-first-paint all verified)"},
+  "test_credentials": "Admin password 'jaxstudio2026' (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Briefly published accent_color=#22c55e + brand_tagline='Custom Tag SSR' to validate SSR injection of admin-published values; reset to defaults via POST /api/admin/settings/reset at end of test (verified accent_color: null, brand_tagline: null in subsequent injection).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "serve.js at /app/frontend/serve.js handles / and /index.html (lines 71-72) plus SPA-style fallback (lines 83-88). Backend fetched via http://127.0.0.1:8001 with 1.5s AbortController timeout (line 35). Injected just before </head> (line 53). package.json start:prod runs 'yarn build && node serve.js'. Pytest 41/41 — to run: cd /app/backend && PYTHONPATH=/app/backend /root/.venv/bin/python -m pytest tests/ -v. og-image.png is 1200x630 RGB PNG, 124387 bytes; verify with curl -sI .../og-image.png + python3 PIL.Image.open. Any failure of 'no flash' should check (a) serve.js reachable from k8s (logs at /var/log/supervisor/frontend.out.log), (b) serve.js BACKEND_URL points to 127.0.0.1:8001, (c) inline hydration script in /app/frontend/src/html/index.html lines ~22-65 reads window.__INITIAL_SETTINGS__ before localStorage."
+}

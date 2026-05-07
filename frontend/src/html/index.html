@@ -56,19 +56,25 @@
     </script>
     <script>
     /* INLINE SETTINGS HYDRATION — runs BEFORE main bundle to eliminate the
-       flash of default values on page refresh. Reads the last-known published
-       settings from localStorage (saved on every successful /api/settings
-       fetch) and applies critical CSS custom properties + brand text BEFORE
-       the first paint. */
+       flash of default values on page refresh. Source priority:
+         1. window.__INITIAL_SETTINGS__ (server-injected by serve.js — every
+            visitor gets the live published values from the very first paint,
+            including first-timers on a new device)
+         2. localStorage cache (fallback if backend was unreachable during
+            server render, or if the user is offline) */
     (function () {
       try {
-        var raw = localStorage.getItem('jaxStudio.publishedSettings.v1');
-        if (!raw) return;
-        var s = JSON.parse(raw);
+        var s = (typeof window.__INITIAL_SETTINGS__ === 'object' && window.__INITIAL_SETTINGS__)
+          ? window.__INITIAL_SETTINGS__
+          : null;
+        if (!s) {
+          var raw = localStorage.getItem('jaxStudio.publishedSettings.v1');
+          if (raw) s = JSON.parse(raw);
+        }
+        if (!s) return;
         var root = document.documentElement.style;
         if (s.accent_color) {
           root.setProperty('--accent', s.accent_color);
-          // Soft accent (18% alpha) — small inline alpha calc
           var hex = s.accent_color.replace('#', '');
           if (hex.length === 6) {
             var r = parseInt(hex.slice(0, 2), 16);
@@ -84,7 +90,6 @@
         if (typeof s.welcome_letter_spacing === 'number') root.setProperty('--welcome-letter-spacing', s.welcome_letter_spacing + 'em');
         if (typeof s.welcome_line_height === 'number') root.setProperty('--welcome-line-height', s.welcome_line_height);
         if (typeof s.ripple_speed === 'number') root.setProperty('--ripple-speed', s.ripple_speed);
-        // Mark body once DOM is ready so the brand-text patch can run too.
         document.addEventListener('DOMContentLoaded', function () {
           if (s.brand_title) {
             var b = document.querySelector('[data-testid="brand-title"]');
