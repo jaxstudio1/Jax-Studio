@@ -188,6 +188,8 @@ class Settings(BaseModel):
     welcome_letter_fill: Optional[bool] = None
     welcome_letter_use_accent: Optional[bool] = None  # tint shapes from accent_color
     welcome_letter_apply_to: Optional[str] = None     # 'heading' | 'sub' | 'both'
+    swipe_threshold: Optional[int] = None             # px, 16–80, default 36
+    wheel_threshold: Optional[int] = None             # px, 4–40, default 12
     updated_at: Optional[str] = None
 
 
@@ -219,6 +221,8 @@ class SettingsUpdate(BaseModel):
     welcome_letter_fill: Optional[bool] = Field(default=None)
     welcome_letter_use_accent: Optional[bool] = Field(default=None)
     welcome_letter_apply_to: Optional[str] = Field(default=None, max_length=12)
+    swipe_threshold: Optional[int] = Field(default=None, ge=16, le=80)
+    wheel_threshold: Optional[int] = Field(default=None, ge=4, le=40)
 
     @field_validator('welcome_letter_effect')
     @classmethod
@@ -629,6 +633,7 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "welcome_letter_effect": None, "welcome_letter_speed": None, "welcome_letter_stagger": None,
             "welcome_letter_density": None, "welcome_letter_shapes": None, "welcome_letter_fill": None,
             "welcome_letter_use_accent": None, "welcome_letter_apply_to": None,
+            "swipe_threshold": None, "wheel_threshold": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},
         upsert=True,

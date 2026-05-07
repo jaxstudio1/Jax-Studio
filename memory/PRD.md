@@ -43,6 +43,16 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 14.2 (Feb 2026) — Scroll & swipe sensitivity sliders (Page 2)
+User asked for runtime control over swipe-to-projects sensitivity.
+- New **"Scroll & swipe sensitivity"** section at the bottom of Page 2 with two sliders:
+  - **Mobile swipe-up threshold** — 16 → 80 px, default 36 px (the upward finger-drag distance needed on the welcome overlay to trigger the projects reveal)
+  - **Desktop wheel-down threshold** — 4 → 40 px, default 12 px (the `e.deltaY` gate on the wheel listener)
+- Live-preview wired via `window.__motion = { swipeThresh, wheelThresh }`. The wheel/touchmove handlers in `index.js` read from `window.__motion` on every event, so a slider drag instantly updates sensitivity without a Publish.
+- Backend `Settings` + `SettingsUpdate` extended with `swipe_threshold` (int 16-80) and `wheel_threshold` (int 4-40). Reset endpoint clears both back to null.
+- Verified live: `PUT { swipe_threshold: 24, wheel_threshold: 8 }` → 200, `GET /api/settings` reads them back; out-of-range (150) → 422 with descriptive Pydantic error.
+- The letter-effect dropdown was already on Page 2 (under "Decorative letter animation" → "Effect"); no change needed there.
+
 ### Phase 14.1 (Feb 2026) — Mobile fixes for scrolling + persistent UI
 User reported on mobile:
 1. couldn't scroll the welcome overlay down with a finger swipe (only tapping the bottom worked)

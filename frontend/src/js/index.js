@@ -302,7 +302,8 @@ const armWheel = () => {
 window.addEventListener('wheel', (e) => {
   if (!overlay.classList.contains('is-revealed')) return
   if (overlay.classList.contains('is-scrolling-out')) return
-  if (e.deltaY > 12) {
+  const thresh = (window.__motion && window.__motion.wheelThresh) || 12
+  if (e.deltaY > thresh) {
     armWheel()
     goToProjects()
   }
@@ -319,7 +320,8 @@ overlay.addEventListener('touchmove', (e) => {
   if (!overlay.classList.contains('is-revealed')) return
   if (overlay.classList.contains('is-scrolling-out')) return
   const dy = _touchStartY - (e.touches && e.touches[0] ? e.touches[0].clientY : _touchStartY)
-  if (dy > 36) {  // user swiped up at least 36 px
+  const thresh = (window.__motion && window.__motion.swipeThresh) || 36
+  if (dy > thresh) {
     _touchStartY = null
     goToProjects()
   }

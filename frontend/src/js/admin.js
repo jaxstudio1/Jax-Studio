@@ -41,6 +41,8 @@ const DEFAULTS = {
   welcome_letter_fill: true,
   welcome_letter_use_accent: false,
   welcome_letter_apply_to: 'heading',
+  swipe_threshold: 36,
+  wheel_threshold: 12,
 }
 
 const PANEL_WIDTH_MIN = 320
@@ -277,6 +279,10 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const inputLetterFill = $('[data-testid="admin-letter-fill"]')
   const inputLetterUseAccent = $('[data-testid="admin-letter-use-accent"]')
   const inputLetterApplyTo = $('[data-testid="admin-letter-apply-to"]')
+  const inputSwipeThreshold = $('[data-testid="admin-swipe-threshold"]')
+  const labelSwipeThreshold = $('[data-testid="admin-swipe-threshold-value"]')
+  const inputWheelThreshold = $('[data-testid="admin-wheel-threshold"]')
+  const labelWheelThreshold = $('[data-testid="admin-wheel-threshold-value"]')
 
   // Projects (page 4)
   const projectsList = $('[data-testid="admin-projects-list"]')
@@ -432,12 +438,21 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     }
   }
 
+  const applyMotion = (s) => {
+    const sw = (typeof s.swipe_threshold === 'number') ? s.swipe_threshold : DEFAULTS.swipe_threshold
+    const wh = (typeof s.wheel_threshold === 'number') ? s.wheel_threshold : DEFAULTS.wheel_threshold
+    window.__motion = window.__motion || {}
+    window.__motion.swipeThresh = sw
+    window.__motion.wheelThresh = wh
+  }
+
   const applySettings = async (s) => {
     applyAccent(s.accent_color || DEFAULTS.accent_color)
     applyGradient(s)
     applyTextDOM(s)
     applyRippleEffects(s)
     applyLetterFx(s)
+    applyMotion(s)
     await applyCubeTextures(s)
   }
 
@@ -507,6 +522,16 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     if (inputLetterFill) inputLetterFill.checked = (typeof s.welcome_letter_fill === 'boolean') ? s.welcome_letter_fill : DEFAULTS.welcome_letter_fill
     if (inputLetterUseAccent) inputLetterUseAccent.checked = (typeof s.welcome_letter_use_accent === 'boolean') ? s.welcome_letter_use_accent : DEFAULTS.welcome_letter_use_accent
     if (inputLetterApplyTo) inputLetterApplyTo.value = s.welcome_letter_apply_to || DEFAULTS.welcome_letter_apply_to
+    const swipe = (typeof s.swipe_threshold === 'number') ? s.swipe_threshold : DEFAULTS.swipe_threshold
+    const wheel = (typeof s.wheel_threshold === 'number') ? s.wheel_threshold : DEFAULTS.wheel_threshold
+    if (inputSwipeThreshold) {
+      inputSwipeThreshold.value = swipe
+      labelSwipeThreshold.textContent = `${swipe} px`
+    }
+    if (inputWheelThreshold) {
+      inputWheelThreshold.value = wheel
+      labelWheelThreshold.textContent = `${wheel} px`
+    }
     const accent = s.accent_color || DEFAULTS.accent_color
     inputAccentPicker.value = accent
     inputAccentHex.value = accent.toUpperCase()
@@ -547,6 +572,8 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     welcome_letter_fill: inputLetterFill ? !!inputLetterFill.checked : DEFAULTS.welcome_letter_fill,
     welcome_letter_use_accent: inputLetterUseAccent ? !!inputLetterUseAccent.checked : DEFAULTS.welcome_letter_use_accent,
     welcome_letter_apply_to: inputLetterApplyTo ? inputLetterApplyTo.value : DEFAULTS.welcome_letter_apply_to,
+    swipe_threshold: inputSwipeThreshold ? parseInt(inputSwipeThreshold.value, 10) : DEFAULTS.swipe_threshold,
+    wheel_threshold: inputWheelThreshold ? parseInt(inputWheelThreshold.value, 10) : DEFAULTS.wheel_threshold,
     accent_color: inputAccentHex.value.trim() || null,
     logo_url: pendingLogoUrl || published.logo_url || null,
   })
@@ -973,6 +1000,24 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   if (inputLetterFill) inputLetterFill.addEventListener('change', liveApplyLetterFx)
   if (inputLetterUseAccent) inputLetterUseAccent.addEventListener('change', liveApplyLetterFx)
   if (inputLetterApplyTo) inputLetterApplyTo.addEventListener('change', liveApplyLetterFx)
+
+  // Scroll & swipe sensitivity — live
+  if (inputSwipeThreshold) {
+    inputSwipeThreshold.addEventListener('input', () => {
+      const v = parseInt(inputSwipeThreshold.value, 10)
+      if (labelSwipeThreshold) labelSwipeThreshold.textContent = `${v} px`
+      window.__motion = window.__motion || {}
+      window.__motion.swipeThresh = v
+    })
+  }
+  if (inputWheelThreshold) {
+    inputWheelThreshold.addEventListener('input', () => {
+      const v = parseInt(inputWheelThreshold.value, 10)
+      if (labelWheelThreshold) labelWheelThreshold.textContent = `${v} px`
+      window.__motion = window.__motion || {}
+      window.__motion.wheelThresh = v
+    })
+  }
 
   // ===================== Page 4 — Projects CRUD =====================
   const _pEsc = (s) => String(s == null ? '' : s)

@@ -452,6 +452,27 @@
                 </select>
               </label>
             </section>
+
+            <section class="admin-section">
+              <h3 class="admin-section__title">Scroll &amp; swipe sensitivity</h3>
+              <p class="admin-section__hint">How easy it is for visitors to leave the welcome overlay and land on Past Projects.</p>
+              <div class="admin-slider">
+                <div class="admin-slider__row">
+                  <span class="admin-slider__label">Mobile swipe-up threshold</span>
+                  <span class="admin-slider__value" data-testid="admin-swipe-threshold-value">36 px</span>
+                </div>
+                <input type="range" min="16" max="80" step="2" value="36" data-testid="admin-swipe-threshold" class="admin-slider__input" />
+                <p class="admin-section__hint">Lower = easier (a flick reveals projects) · higher = harder (must drag further)</p>
+              </div>
+              <div class="admin-slider">
+                <div class="admin-slider__row">
+                  <span class="admin-slider__label">Desktop wheel-down threshold</span>
+                  <span class="admin-slider__value" data-testid="admin-wheel-threshold-value">12 px</span>
+                </div>
+                <input type="range" min="4" max="40" step="1" value="12" data-testid="admin-wheel-threshold" class="admin-slider__input" />
+                <p class="admin-section__hint">Lower = a single mouse-wheel notch triggers · higher = need a deliberate scroll</p>
+              </div>
+            </section>
           </div><!-- /page 2 -->
 
           <div class="admin-panel__page" data-page="3" data-testid="admin-page-3" aria-hidden="true">
