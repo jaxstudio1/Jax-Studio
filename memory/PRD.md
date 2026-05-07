@@ -19,19 +19,21 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
+### Phase 14.5 (Feb 2026) — DecorativeLetterAnimations on Welcome ↔ About transition
+User feedback: "What happened to the DecorativeLetterAnimations github i gave u to use? I want it so that when i barely scroll my mouse twice to go to the about section it animates-out using the DecorativeLetterAnimations and then fade in the about section. This should have sliders and a dropbox to pick animation styles." User confirmed: bidirectional (a) — scroll back up reverses with letter entrance.
+- **Welcome → About transition** now plays the DecorativeLetterAnimations EXIT (per-letter swirl + decorative shapes scattering) on the welcome heading, then fades the welcome to opacity 0 (`is-faded` class). About fades in over it (`position: fixed; inset: 0; z-index: 70`).
+- **About → Welcome reverse** — at the top of About (`scrollTop ≤ 2`), wheel-up (deltaY < -10) OR clicking the back button replays the letter ENTRANCE animation, restoring the welcome.
+- **Dedicated admin controls** (Page 5 → "Welcome → About transition" section):
+  - Effect dropdown: "Same as welcome entrance" (default) + 9 codrops presets (Eurhythmic, Aquarius, Lycanthropy, Wonderland, Screenager, Callipygian, Eviternity, Jumbuck, Babooner).
+  - Speed slider: 0.5×–2.0× with live `1.50×`-style label.
+  - Both edit `about_transition_effect` and `about_transition_speed` on the public Settings document.
+  - Live-preview wires `window.__welcomeFx.setAboutTransitionSettings(...)` on every change — no Publish required to see the effect on the next scroll.
+- **Backend Settings model** gains `about_transition_effect` (str, must be in `ALLOWED_LETTER_EFFECTS` or `null`) and `about_transition_speed` (float `0.5..2.0` or `null`). Validated in `SettingsUpdate`. `POST /api/admin/settings/reset` clears both. PUT with null is a partial no-op (existing semantics).
+- **Implementation note**: `welcomeFx.js` reuses the already-built `_headingWord` / `_subWord` Word instances and only swaps the effect's `show` / `hide` config when the new `playAboutExit` / `playAboutEntrance` are called — no DOM rebuild needed since codrops effects share the same per-letter span structure.
+- **Test coverage**: 35/35 pytest pass (9 new tests for the transition fields — every codrops effect, range 422s, boundaries, public exposure, reset, partial-update preservation). Frontend verified by `testing_agent_v3_fork` end-to-end (letter FX exit → about fade-in → wheel-up reverse → letter entrance, plus admin live-preview & publish round-trip).
+
 ### Phase 14.4 (Feb 2026) — Scroll-back-to-welcome + About back button polish
-User feedback: "lower the back button on the about page so by default it sits below JAX STUDIO. Include the about page on the welcome to so I can scroll back up to the welcome."
-- **About-back button repositioned** — was overlapping with the top-left `JAX STUDIO` frame title; now sits at `top: 5.6rem; left: 2.6rem` (84 px from viewport top, ~14 px below the brand baseline). Mobile breakpoint (≤720 px) keeps it tighter at `top: 5rem`.
-- **Welcome overlay stays fixed during About route** (instead of sliding off-screen):
-  - `goToAbout` no longer plays the welcome exit animation. It just toggles `body.is-scrollable` and reveals About.
-  - About sits below the fixed welcome via `body.is-scrollable .about.is-active { margin-top: 100vh; z-index: 60 }` — it scrolls *up* over the fixed welcome (z-index 50).
-  - User can `wheel-up` / drag-to-top at any time to revisit the welcome view.
-  - `scroll-behavior: smooth` on `html.is-scrollable` so manual scrolling between sections is buttery.
-  - Wheel & touchmove handlers on the welcome overlay disable themselves once `body.is-scrollable` is on, letting native scrolling take over.
-- **Welcome's small "Back" arrow** is context-aware now: standalone-cube state → dismisses to cube (unchanged); on About route (`body.is-scrollable`) → calls `backToHome()` (clears scroll-mode, returns to cube + welcome dismissed).
-- **`revealAboutSection`** uses `getBoundingClientRect().top + window.scrollY` instead of `offsetTop` because margin-collapsing through the ancestor chain (main has no padding/border) makes `offsetTop` read 0 even though the box is at y=1080. The double-rAF + 80 ms safety setTimeout ensures the scroll lands reliably even when called immediately after `display: block`.
-- **Hash deeplinks updated** — `#about` hash now sets the welcome to active+revealed and adds `body.is-scrollable` so the user lands on About *with* the welcome scrollable above. `#projects` clears scroll-mode.
-- **Test results**: 26/26 backend pytest pass, all frontend flows verified by `testing_agent_v3_fork` (about-back position, scroll-back-up, hash deeplinks, admin Page 5 round-trip incl. photo upload, all CRUD, exit animations).
+(Superseded by 14.5 — the scroll-back-to-welcome behaviour is now reverse-letter-FX rather than the dual-section scroll.)
 
 ### Phase 14.3 (Feb 2026) — About section + Page 5 admin CMS + greet/bang exit animation
 - New `<section class="about">` revealed when scrolling down from welcome. Photo + name/role/years card on the left (sticky on ≥880 px), heading + body paragraphs + animated skill bars + tools chips on the right.
