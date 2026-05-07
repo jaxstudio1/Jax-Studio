@@ -19,7 +19,27 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
-### Phase 1 (May 2026)
+### Phase 14.4 (Feb 2026) — Scroll-back-to-welcome + About back button polish
+User feedback: "lower the back button on the about page so by default it sits below JAX STUDIO. Include the about page on the welcome to so I can scroll back up to the welcome."
+- **About-back button repositioned** — was overlapping with the top-left `JAX STUDIO` frame title; now sits at `top: 5.6rem; left: 2.6rem` (84 px from viewport top, ~14 px below the brand baseline). Mobile breakpoint (≤720 px) keeps it tighter at `top: 5rem`.
+- **Welcome overlay stays fixed during About route** (instead of sliding off-screen):
+  - `goToAbout` no longer plays the welcome exit animation. It just toggles `body.is-scrollable` and reveals About.
+  - About sits below the fixed welcome via `body.is-scrollable .about.is-active { margin-top: 100vh; z-index: 60 }` — it scrolls *up* over the fixed welcome (z-index 50).
+  - User can `wheel-up` / drag-to-top at any time to revisit the welcome view.
+  - `scroll-behavior: smooth` on `html.is-scrollable` so manual scrolling between sections is buttery.
+  - Wheel & touchmove handlers on the welcome overlay disable themselves once `body.is-scrollable` is on, letting native scrolling take over.
+- **Welcome's small "Back" arrow** is context-aware now: standalone-cube state → dismisses to cube (unchanged); on About route (`body.is-scrollable`) → calls `backToHome()` (clears scroll-mode, returns to cube + welcome dismissed).
+- **`revealAboutSection`** uses `getBoundingClientRect().top + window.scrollY` instead of `offsetTop` because margin-collapsing through the ancestor chain (main has no padding/border) makes `offsetTop` read 0 even though the box is at y=1080. The double-rAF + 80 ms safety setTimeout ensures the scroll lands reliably even when called immediately after `display: block`.
+- **Hash deeplinks updated** — `#about` hash now sets the welcome to active+revealed and adds `body.is-scrollable` so the user lands on About *with* the welcome scrollable above. `#projects` clears scroll-mode.
+- **Test results**: 26/26 backend pytest pass, all frontend flows verified by `testing_agent_v3_fork` (about-back position, scroll-back-up, hash deeplinks, admin Page 5 round-trip incl. photo upload, all CRUD, exit animations).
+
+### Phase 14.3 (Feb 2026) — About section + Page 5 admin CMS + greet/bang exit animation
+- New `<section class="about">` revealed when scrolling down from welcome. Photo + name/role/years card on the left (sticky on ≥880 px), heading + body paragraphs + animated skill bars + tools chips on the right.
+- Admin Page 5 (`data-page="5"`) — full CMS for the About section: eyebrow, title (pre + emphasis), body (multi-paragraph blank-line split), photo upload, name, role, years, skills (`name : pct` per line), tools (comma-separated). Live-preview as you type; persists via `PUT /api/admin/settings`.
+- Backend extension — `Settings` + `SettingsUpdate` models gain `about_eyebrow`, `about_heading_pre`, `about_heading_emphasis`, `about_body`, `about_photo_url`, `about_person_name`, `about_person_role`, `about_years`, `about_skills` (list of `{name, pct}`), `about_tools` (list of strings), all with appropriate range/length validation. New endpoint: `POST /api/admin/about/upload` (PNG/JPG/WEBP/SVG ≤ 6 MB → `/api/uploads/about-<hex>.<ext>`).
+- "Welcome to" greet, "!" bang, sub-heading, and action buttons now animate during the welcome's exit (e.g. clicking "Past Projects") via the new `is-exiting` class — fade + translate-up + bang rotates/falls — so nothing sits frozen while the per-letter swirl plays.
+
+
 - WebGL cube replaces React frontend; J logo (decoded from user's PNG) replaces Apple logo on all 3 logo faces
 - Brand corners: top-left "JAX STUDIO", bottom-right "COMING SOON"
 - Click cube → ripple from click point → "WELCOME TO / JAX STUDIO!" overlay
