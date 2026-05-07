@@ -30,6 +30,9 @@ const DEFAULTS = {
   welcome_letter_spacing: -0.02,
   welcome_line_spacing: 0.95,
   accent_color: '#ff5722',
+  ripple_speed: 1.0,
+  ripple_tint: 30,
+  ripple_ring_count: 4,
 }
 
 const PANEL_WIDTH_MIN = 320
@@ -248,6 +251,12 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const labelWelcomeLetterSpacing = $('[data-testid="admin-welcome-letter-spacing-value"]')
   const inputWelcomeLineSpacing = $('[data-testid="admin-welcome-line-spacing"]')
   const labelWelcomeLineSpacing = $('[data-testid="admin-welcome-line-spacing-value"]')
+  const inputRippleSpeed = $('[data-testid="admin-ripple-speed"]')
+  const labelRippleSpeed = $('[data-testid="admin-ripple-speed-value"]')
+  const inputRippleTint = $('[data-testid="admin-ripple-tint"]')
+  const labelRippleTint = $('[data-testid="admin-ripple-tint-value"]')
+  const inputRippleRings = $('[data-testid="admin-ripple-rings"]')
+  const rippleEl = document.querySelector('.welcome-overlay__ripple')
   const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
   const inputAccentHex = $('[data-testid="admin-accent-hex"]')
   const swatches = panel.querySelectorAll('.admin-color__swatch')
@@ -383,10 +392,20 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     setGradientState(colors)
   }
 
+  const applyRippleEffects = (s) => {
+    const speed = (typeof s.ripple_speed === 'number') ? s.ripple_speed : DEFAULTS.ripple_speed
+    const tint = (typeof s.ripple_tint === 'number') ? s.ripple_tint : DEFAULTS.ripple_tint
+    const rings = (typeof s.ripple_ring_count === 'number') ? s.ripple_ring_count : DEFAULTS.ripple_ring_count
+    document.documentElement.style.setProperty('--ripple-speed', String(speed))
+    document.documentElement.style.setProperty('--ripple-tint', `${tint}%`)
+    if (rippleEl) rippleEl.setAttribute('data-rings', String(rings))
+  }
+
   const applySettings = async (s) => {
     applyAccent(s.accent_color || DEFAULTS.accent_color)
     applyGradient(s)
     applyTextDOM(s)
+    applyRippleEffects(s)
     await applyCubeTextures(s)
   }
 
@@ -425,6 +444,20 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       inputWelcomeLineSpacing.value = wlh
       labelWelcomeLineSpacing.textContent = `${wlh.toFixed(2)}×`
     }
+    const rspeed = (typeof s.ripple_speed === 'number') ? s.ripple_speed : DEFAULTS.ripple_speed
+    const rtint = (typeof s.ripple_tint === 'number') ? s.ripple_tint : DEFAULTS.ripple_tint
+    const rrings = (typeof s.ripple_ring_count === 'number') ? s.ripple_ring_count : DEFAULTS.ripple_ring_count
+    if (inputRippleSpeed) {
+      inputRippleSpeed.value = rspeed
+      labelRippleSpeed.textContent = `${rspeed.toFixed(2)}×`
+    }
+    if (inputRippleTint) {
+      inputRippleTint.value = rtint
+      labelRippleTint.textContent = `${rtint}%`
+    }
+    if (inputRippleRings) {
+      inputRippleRings.value = String(rrings)
+    }
     const accent = s.accent_color || DEFAULTS.accent_color
     inputAccentPicker.value = accent
     inputAccentHex.value = accent.toUpperCase()
@@ -454,6 +487,9 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     welcome_sub: inputWelcomeSub.value.trim() || null,
     welcome_letter_spacing: inputWelcomeLetterSpacing ? parseFloat(inputWelcomeLetterSpacing.value) : DEFAULTS.welcome_letter_spacing,
     welcome_line_spacing: inputWelcomeLineSpacing ? parseFloat(inputWelcomeLineSpacing.value) : DEFAULTS.welcome_line_spacing,
+    ripple_speed: inputRippleSpeed ? parseFloat(inputRippleSpeed.value) : DEFAULTS.ripple_speed,
+    ripple_tint: inputRippleTint ? parseInt(inputRippleTint.value, 10) : DEFAULTS.ripple_tint,
+    ripple_ring_count: inputRippleRings ? parseInt(inputRippleRings.value, 10) : DEFAULTS.ripple_ring_count,
     accent_color: inputAccentHex.value.trim() || null,
     logo_url: pendingLogoUrl || published.logo_url || null,
   })
@@ -830,6 +866,28 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     inputWelcomeLineSpacing.addEventListener('input', () => {
       labelWelcomeLineSpacing.textContent = `${parseFloat(inputWelcomeLineSpacing.value).toFixed(2)}×`
       applyWelcomeSpacingFromForm()
+    })
+  }
+
+  // Cube ripple effects — live
+  if (inputRippleSpeed) {
+    inputRippleSpeed.addEventListener('input', () => {
+      const v = parseFloat(inputRippleSpeed.value)
+      labelRippleSpeed.textContent = `${v.toFixed(2)}×`
+      document.documentElement.style.setProperty('--ripple-speed', String(v))
+    })
+  }
+  if (inputRippleTint) {
+    inputRippleTint.addEventListener('input', () => {
+      const v = parseInt(inputRippleTint.value, 10)
+      labelRippleTint.textContent = `${v}%`
+      document.documentElement.style.setProperty('--ripple-tint', `${v}%`)
+    })
+  }
+  if (inputRippleRings) {
+    inputRippleRings.addEventListener('change', () => {
+      const v = parseInt(inputRippleRings.value, 10)
+      if (rippleEl) rippleEl.setAttribute('data-rings', String(v))
     })
   }
 

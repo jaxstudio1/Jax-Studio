@@ -166,6 +166,9 @@ class Settings(BaseModel):
     welcome_letter_spacing: Optional[float] = None    # em units, default -0.02
     welcome_line_spacing: Optional[float] = None      # multiplier, default 0.95
     accent_color: Optional[str] = None
+    ripple_speed: Optional[float] = None              # multiplier, default 1.0 (0.5–2.0)
+    ripple_tint: Optional[int] = None                 # accent-mix %, default 30 (0–60)
+    ripple_ring_count: Optional[int] = None           # 3 / 4 / 5, default 4
     updated_at: Optional[str] = None
 
 
@@ -186,6 +189,9 @@ class SettingsUpdate(BaseModel):
     welcome_letter_spacing: Optional[float] = Field(default=None, ge=-0.05, le=0.6)
     welcome_line_spacing: Optional[float] = Field(default=None, ge=0.7, le=2.0)
     accent_color: Optional[str] = Field(default=None, max_length=9)
+    ripple_speed: Optional[float] = Field(default=None, ge=0.5, le=2.0)
+    ripple_tint: Optional[int] = Field(default=None, ge=0, le=60)
+    ripple_ring_count: Optional[int] = Field(default=None, ge=3, le=5)
 
     @field_validator('accent_color', 'gradient_color_a', 'gradient_color_b')
     @classmethod
@@ -556,6 +562,7 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "welcome_heading": None, "welcome_sub": None,
             "welcome_letter_spacing": None, "welcome_line_spacing": None,
             "accent_color": None,
+            "ripple_speed": None, "ripple_tint": None, "ripple_ring_count": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},
         upsert=True,

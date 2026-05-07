@@ -264,13 +264,19 @@ main {
     rgba(255, 255, 255, 0.06) 45%,
     rgba(255, 255, 255, 0.02) 75%,
     transparent 100%);
-  /* Outer halo carries the accent-orange warmth; inner glow stays white-wet */
+  /* Outer halo carries the accent-orange warmth (intensity tunable via --ripple-tint); inner glow stays white-wet */
   box-shadow:
-    0 0 32px 6px color-mix(in srgb, var(--accent, #ff5722) 30%, transparent),
+    0 0 32px 6px color-mix(in srgb, var(--accent, #ff5722) var(--ripple-tint, 30%), transparent),
     0 0 14px 2px rgba(255, 255, 255, 0.22),
     inset 0 0 14px rgba(255, 255, 255, 0.14);
   filter: blur(0.5px);
   opacity: 0;
+}
+
+/* Ring-count gating — hide trailing rings when the user picks fewer */
+.welcome-overlay__ripple[data-rings="3"] .welcome-overlay__ripple-ring:nth-child(n+4),
+.welcome-overlay__ripple[data-rings="4"] .welcome-overlay__ripple-ring:nth-child(n+5) {
+  display: none;
 }
 
 /* Final fill — solid bg color sweeping out at the end → reveals welcome text */
@@ -280,27 +286,32 @@ main {
 }
 
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(1) {
-  animation: water-ring 1.40s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: water-ring calc(var(--ripple-speed, 1) * 1.40s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: 0s;
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(2) {
-  animation: water-ring 1.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.10s;
+  animation: water-ring calc(var(--ripple-speed, 1) * 1.55s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.10s);
   border-color: rgba(255, 240, 225, 0.45);
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(3) {
-  animation: water-ring 1.70s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.22s;
+  animation: water-ring calc(var(--ripple-speed, 1) * 1.70s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.22s);
   border-color: rgba(255, 235, 215, 0.28);
 }
 .welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(4) {
-  animation: water-ring 1.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.36s;
+  animation: water-ring calc(var(--ripple-speed, 1) * 1.85s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.36s);
   border-color: rgba(255, 230, 210, 0.16);
 }
+.welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(5) {
+  animation: water-ring calc(var(--ripple-speed, 1) * 2.00s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.52s);
+  border-color: rgba(255, 225, 205, 0.10);
+}
 .welcome-overlay.is-active .welcome-overlay__ripple-fill {
-  animation: water-fill 1.10s cubic-bezier(0.5, 0, 0.2, 1) forwards;
-  animation-delay: 0.45s;
+  animation: water-fill calc(var(--ripple-speed, 1) * 1.10s) cubic-bezier(0.5, 0, 0.2, 1) forwards;
+  animation-delay: calc(var(--ripple-speed, 1) * 0.45s);
 }
 
 @keyframes water-ring {
@@ -341,7 +352,7 @@ main {
   gap: 1.0rem;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.7s ease 1.50s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 1.50s;
+  transition: opacity 0.7s ease calc(var(--ripple-speed, 1) * 1.50s), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--ripple-speed, 1) * 1.50s);
   padding: 0 2rem;
   z-index: 2;
 }
@@ -1011,9 +1022,11 @@ main {
 .admin-panel__pager {
   display: flex; align-items: center; justify-content: center;
   gap: 0.7rem;
-  padding: 0.7rem 0 0.2rem 0;
-  margin-top: 0.5rem;
-  border-top: 1px dashed rgba(255,255,255,0.06);
+  padding: 0.85rem 1.4rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 .admin-pager__btn {
   display: inline-flex; align-items: center; justify-content: center;

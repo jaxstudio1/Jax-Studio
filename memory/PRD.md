@@ -43,6 +43,19 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 13 (Feb 2026) — Admin Page 3: Cube ripple "Effects"
+- **3 new controls** on Page 3 of the multi-page admin panel:
+  - **Speed** slider (0.5× → 2.0×, default 1.0×) — multiplier applied to every ripple animation duration & delay (ring 1–5 + final fill + welcome text fade-in) via the new `--ripple-speed` CSS custom property on `:root`. Lower = punchier, higher = dreamier.
+  - **Accent tint strength** slider (0% → 60%, default 30%) — drives the `var(--ripple-tint)` CSS var that's plugged into the `box-shadow` halo's `color-mix(in srgb, var(--accent) var(--ripple-tint), transparent)`. As you change accent color in Page 1, the ripple rings inherit the tint live.
+  - **Ring count** select (3 / 4 / 5, default 4) — `data-rings` attribute on the `.welcome-overlay__ripple` element; CSS `:nth-child(n+4)` and `:nth-child(n+5)` selectors gate the trailing rings via `display: none`. A 5th ring animation was added (delay 0.52 s, duration 2.00 s, alpha 0.10) for the "layered pond" option.
+- **Pager moved out of the scroll container** to a new flex row between the scroll area and the footer, so it's always visible regardless of how much content sits in the active page (was previously buried at the bottom of the long Page 1)
+- **Live preview** — every slider drag immediately updates the corresponding CSS custom property on `:root` so the ripple feels different on the next click without needing to hit Publish
+- **Backend persistence**: new `ripple_speed` (float, 0.5–2.0), `ripple_tint` (int, 0–60), `ripple_ring_count` (int, 3–5) fields on `Settings` and `SettingsUpdate`, wired through Reset to defaults. Live API verified:
+  - PUT `{ ripple_speed:1.4, ripple_tint:45, ripple_ring_count:5 }` → 200 OK with values echoed
+  - GET `/api/settings` returns the same values for public visitors
+  - Out-of-range PUTs (`ripple_ring_count: 7`, `ripple_speed: 3.5`) → 422 with descriptive Pydantic error
+  - Reset endpoint clears all three back to null
+
 ### Phase 12 (Feb 2026) — Water-style ripple effect on cube click  *(refined)*
 **Refinement after first pass — softer, dreamier, designer-tinted:**
 - **Slower & dreamier**: base ring duration 1.15 s → 1.40 s; per-ring delays bumped (0 / 0.10 / 0.22 / 0.36 s); fill kicks in at 0.45 s and ends at 1.55 s; welcome heading retimed to fade in at 1.50 s
