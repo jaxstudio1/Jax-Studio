@@ -43,6 +43,16 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 12 (Feb 2026) — Water-style ripple effect on cube click
+- Replaced the single solid expanding circle with a **layered water ripple** when the cube is clicked:
+  - **3 staggered concentric rings** expand from the click point — each is a translucent circle border with a soft inner glow + outer halo (`box-shadow`) and a 0.4 px blur for the wet-surface feel
+  - Rings cascade with delays of `0s · 0.10s · 0.22s` and durations of `1.15s · 1.30s · 1.50s` using a smooth `cubic-bezier(0.16, 1, 0.3, 1)` ease-out
+  - Border opacity steps down per ring (0.92 → 0.55 → 0.30) so each successive ring feels like a fading water echo
+  - Border-width animates from 4 px → 0.6 px during the expansion, mimicking the natural way ripples thin out as they spread
+- After the rings start their journey, a **screen-wipe fill** kicks in at 0.35 s and expands to fully cover the viewport over 1.05 s — this is the moment that reveals the welcome text behind it
+- Welcome heading + sub now fade in at 1.15 s (was 0.85 s) so the timing matches the new ripple choreography
+- HTML/CSS only — no JS changes needed (the existing click handler still just sets `--ripple-x` / `--ripple-y` and toggles `.is-active`)
+
 ### Phase 11 (Feb 2026) — Collapsible Inbox + Multi-page Admin Panel
 - **Inbox is now collapsible**:
   - Section header is a clickable toggle with a chevron icon (rotates -90° when collapsed)

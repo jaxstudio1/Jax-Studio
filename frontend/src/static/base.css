@@ -236,26 +236,91 @@ main {
   position: absolute;
   top: var(--ripple-y, 50%);
   left: var(--ripple-x, 50%);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  transform: translate(-50%, -50%) scale(0);
-  transform-origin: center;
-  opacity: 0;
+  width: 0;
+  height: 0;
   pointer-events: none;
   z-index: 1;
 }
 
-.welcome-overlay.is-active .welcome-overlay__ripple {
-  animation: ripple-grow 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+/* Each ring is a translucent circle border that expands like a real water ripple */
+.welcome-overlay__ripple-ring,
+.welcome-overlay__ripple-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transform-origin: center;
+  pointer-events: none;
+  will-change: transform, opacity, border-width, box-shadow;
 }
 
-@keyframes ripple-grow {
-  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0;   background: #fff; }
-  20%  { opacity: 0.95; background: #fff; }
-  60%  { opacity: 1;    background: var(--color-bg); }
-  100% { transform: translate(-50%, -50%) scale(220); opacity: 1;   background: var(--color-bg); }
+.welcome-overlay__ripple-ring {
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background: radial-gradient(circle at center,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.10) 40%,
+    rgba(255, 255, 255, 0.02) 70%,
+    transparent 100%);
+  box-shadow:
+    0 0 24px 4px rgba(255, 255, 255, 0.35),
+    inset 0 0 12px rgba(255, 255, 255, 0.18);
+  filter: blur(0.4px);
+  opacity: 0;
+}
+
+/* Final fill — solid bg color sweeping out at the end → reveals welcome text */
+.welcome-overlay__ripple-fill {
+  background: var(--color-bg);
+  opacity: 0;
+}
+
+.welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(1) {
+  animation: water-ring 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0s;
+}
+.welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(2) {
+  animation: water-ring 1.30s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.10s;
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.welcome-overlay.is-active .welcome-overlay__ripple-ring:nth-child(3) {
+  animation: water-ring 1.50s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.22s;
+  border-color: rgba(255, 255, 255, 0.30);
+}
+.welcome-overlay.is-active .welcome-overlay__ripple-fill {
+  animation: water-fill 1.05s cubic-bezier(0.5, 0, 0.2, 1) forwards;
+  animation-delay: 0.35s;
+}
+
+@keyframes water-ring {
+  0%   {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    border-width: 4px;
+  }
+  10%  {
+    opacity: 1;
+    border-width: 4px;
+  }
+  60%  {
+    opacity: 0.7;
+    border-width: 1.4px;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(180);
+    opacity: 0;
+    border-width: 0.6px;
+  }
+}
+
+@keyframes water-fill {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0; }
+  35%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(220); opacity: 1; }
 }
 
 .welcome-overlay__text {
@@ -269,7 +334,7 @@ main {
   gap: 1.0rem;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.6s ease 0.85s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.85s;
+  transition: opacity 0.7s ease 1.15s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 1.15s;
   padding: 0 2rem;
   z-index: 2;
 }
