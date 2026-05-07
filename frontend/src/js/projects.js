@@ -107,10 +107,17 @@ export const revealProjectsSection = () => {
   section.setAttribute('aria-hidden', 'false')
   document.documentElement.classList.add('is-scrollable')
   document.body.classList.add('is-scrollable')
-  // scroll to it
+  document.body.classList.add('is-projects-route')
   requestAnimationFrame(() => {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
+}
+
+export const hideProjectsSection = () => {
+  if (!section) return
+  section.classList.remove('is-active')
+  section.setAttribute('aria-hidden', 'true')
+  document.body.classList.remove('is-projects-route')
 }
 
 /** Re-render after admin changes */

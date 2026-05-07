@@ -190,6 +190,17 @@ class Settings(BaseModel):
     welcome_letter_apply_to: Optional[str] = None     # 'heading' | 'sub' | 'both'
     swipe_threshold: Optional[int] = None             # px, 16–80, default 36
     wheel_threshold: Optional[int] = None             # px, 4–40, default 12
+    # About me / page section content (admin-editable)
+    about_eyebrow: Optional[str] = None
+    about_heading_pre: Optional[str] = None
+    about_heading_emphasis: Optional[str] = None
+    about_body: Optional[str] = None        # markdown-ish — paragraphs split on blank lines
+    about_photo_url: Optional[str] = None
+    about_person_name: Optional[str] = None
+    about_person_role: Optional[str] = None
+    about_years: Optional[int] = None
+    about_skills: Optional[List[dict]] = None  # [{name, pct}]
+    about_tools: Optional[List[str]] = None
     updated_at: Optional[str] = None
 
 
@@ -223,6 +234,16 @@ class SettingsUpdate(BaseModel):
     welcome_letter_apply_to: Optional[str] = Field(default=None, max_length=12)
     swipe_threshold: Optional[int] = Field(default=None, ge=16, le=80)
     wheel_threshold: Optional[int] = Field(default=None, ge=4, le=40)
+    about_eyebrow: Optional[str] = Field(default=None, max_length=80)
+    about_heading_pre: Optional[str] = Field(default=None, max_length=120)
+    about_heading_emphasis: Optional[str] = Field(default=None, max_length=120)
+    about_body: Optional[str] = Field(default=None, max_length=2000)
+    about_photo_url: Optional[str] = Field(default=None, max_length=400)
+    about_person_name: Optional[str] = Field(default=None, max_length=80)
+    about_person_role: Optional[str] = Field(default=None, max_length=80)
+    about_years: Optional[int] = Field(default=None, ge=0, le=99)
+    about_skills: Optional[List[dict]] = Field(default=None)
+    about_tools: Optional[List[str]] = Field(default=None)
 
     @field_validator('welcome_letter_effect')
     @classmethod
@@ -634,6 +655,9 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "welcome_letter_density": None, "welcome_letter_shapes": None, "welcome_letter_fill": None,
             "welcome_letter_use_accent": None, "welcome_letter_apply_to": None,
             "swipe_threshold": None, "wheel_threshold": None,
+            "about_eyebrow": None, "about_heading_pre": None, "about_heading_emphasis": None,
+            "about_body": None, "about_photo_url": None, "about_person_name": None,
+            "about_person_role": None, "about_years": None, "about_skills": None, "about_tools": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }, "$setOnInsert": {"id": SETTINGS_DOC_ID}},
         upsert=True,
@@ -939,6 +963,24 @@ async def admin_upload_project_image(
     if len(contents) > MAX_PROJECT_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="File too large (max 6 MB)")
     new_name = f"project-{uuid.uuid4().hex[:10]}{ext}"
+    target = UPLOAD_DIR / new_name
+    target.write_bytes(contents)
+    return {"image_url": f"/api/uploads/{new_name}", "size": len(contents), "ext": ext}
+
+
+@api_router.post("/admin/about/upload")
+async def admin_upload_about_photo(
+    file: UploadFile = File(...),
+    _: dict = Depends(require_admin),
+):
+    name = file.filename or ""
+    ext = Path(name).suffix.lower()
+    if ext not in ALLOWED_PROJECT_IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="Image must be .png, .jpg, .jpeg, .webp, or .svg")
+    contents = await file.read()
+    if len(contents) > MAX_PROJECT_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 6 MB)")
+    new_name = f"about-{uuid.uuid4().hex[:10]}{ext}"
     target = UPLOAD_DIR / new_name
     target.write_bytes(contents)
     return {"image_url": f"/api/uploads/{new_name}", "size": len(contents), "ext": ext}

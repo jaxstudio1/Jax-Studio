@@ -94,8 +94,12 @@
           <span class="welcome-overlay__sub">Graphic Design · Portfolio &amp; Studio</span>
           <div class="welcome-overlay__actions">
             <button class="btn btn--primary" type="button" data-testid="welcome-contact-btn">Start a project</button>
-            <button class="btn btn--ghost" type="button" data-testid="welcome-close">Back</button>
+            <button class="btn btn--ghost" type="button" data-testid="welcome-projects-btn">Past Projects</button>
           </div>
+          <button class="welcome-overlay__back" type="button" data-testid="welcome-close" aria-label="Back to cube">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            <span>Back</span>
+          </button>
         </div>
         <button class="welcome-overlay__scroll" type="button" data-testid="welcome-scroll" aria-label="Scroll to past projects">
           <span class="welcome-overlay__scroll-label">Scroll</span>
@@ -158,8 +162,49 @@
         </div>
       </div>
 
+      <!-- About Me (scroll-revealed from welcome) -->
+      <section class="about" data-testid="about-section" aria-hidden="true">
+        <div class="about__inner">
+          <header class="about__head">
+            <span class="about__eyebrow" data-testid="about-eyebrow">About me</span>
+            <h2 class="about__title" data-testid="about-title">
+              <span class="about__title-pre" data-testid="about-title-pre"></span>
+              <span class="about__title-emphasis" data-testid="about-title-emphasis"></span>
+            </h2>
+          </header>
+          <div class="about__columns">
+            <div class="about__photo">
+              <div class="about__photo-frame" data-testid="about-photo-frame">
+                <img src="" alt="" data-testid="about-photo-img" />
+                <div class="about__photo-fallback" data-testid="about-photo-fallback">JS</div>
+              </div>
+              <div class="about__person">
+                <h3 class="about__person-name" data-testid="about-person-name">Wade Jackson</h3>
+                <p class="about__person-role" data-testid="about-person-role">Graphic Designer · KY</p>
+                <span class="about__years" data-testid="about-years">9 years experience</span>
+              </div>
+            </div>
+            <div class="about__content">
+              <div class="about__body" data-testid="about-body"></div>
+              <div class="about__skills" data-testid="about-skills">
+                <h4 class="about__subtitle">Core Skills</h4>
+                <div class="about__skills-list" data-testid="about-skills-list"></div>
+              </div>
+              <div class="about__tools">
+                <h4 class="about__subtitle">Tools &amp; Software</h4>
+                <div class="about__tools-list" data-testid="about-tools-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Past Projects (scroll-revealed) -->
       <section class="projects" data-testid="projects-section" aria-hidden="true">
+        <button class="projects__back" type="button" data-testid="projects-back" aria-label="Back to home">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span>Back</span>
+        </button>
         <header class="projects__head">
           <span class="projects__eyebrow">Selected work</span>
           <h2 class="projects__title">Past Projects<span class="accent">.</span></h2>
@@ -517,13 +562,75 @@
               <p class="admin-projects__empty" data-testid="admin-projects-empty" hidden>No projects yet — click + Add to create your first one.</p>
             </section>
           </div><!-- /page 4 -->
+
+          <div class="admin-panel__page" data-page="5" data-testid="admin-page-5" aria-hidden="true">
+            <section class="admin-section">
+              <h3 class="admin-section__title">About me — page content</h3>
+              <p class="admin-section__hint">All text shown when visitors swipe down from the welcome overlay.</p>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Eyebrow</span>
+                <input type="text" data-testid="admin-about-eyebrow" maxlength="80" placeholder="About me" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Title (pre)</span>
+                <input type="text" data-testid="admin-about-heading-pre" maxlength="120" placeholder="Designing at the" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Title (emphasis — orange)</span>
+                <input type="text" data-testid="admin-about-heading-emphasis" maxlength="120" placeholder="intersection of art &amp; function" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Body — paragraphs (blank line between)</span>
+                <textarea rows="6" data-testid="admin-about-body" maxlength="2000" class="admin-cube-text" placeholder="I am Wade — a designer obsessed with…"></textarea>
+              </label>
+            </section>
+
+            <section class="admin-section">
+              <h3 class="admin-section__title">Photo &amp; identity</h3>
+              <div class="admin-logo">
+                <div class="admin-logo__preview" data-testid="admin-about-photo-preview">
+                  <span class="admin-logo__placeholder">No photo</span>
+                </div>
+                <label class="btn btn--ghost admin-logo__upload">
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden data-testid="admin-about-photo-input" />
+                  Upload photo
+                </label>
+              </div>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Name</span>
+                <input type="text" data-testid="admin-about-name" maxlength="80" placeholder="Wade Jackson" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Role / location</span>
+                <input type="text" data-testid="admin-about-role" maxlength="80" placeholder="Graphic Designer · KY" />
+              </label>
+              <label class="contact-form__field">
+                <span class="contact-form__label">Years of experience</span>
+                <input type="number" data-testid="admin-about-years" min="0" max="99" placeholder="9" />
+              </label>
+            </section>
+
+            <section class="admin-section">
+              <h3 class="admin-section__title">Core skills</h3>
+              <p class="admin-section__hint">Each line: <code>Skill name : 92</code> (percentage 0–100).</p>
+              <textarea rows="6" data-testid="admin-about-skills" class="admin-cube-text" placeholder="Brand Identity : 95
+Web Design (UI/UX) : 90
+Typography : 92"></textarea>
+            </section>
+
+            <section class="admin-section">
+              <h3 class="admin-section__title">Tools &amp; software</h3>
+              <p class="admin-section__hint">Comma-separated.</p>
+              <textarea rows="3" data-testid="admin-about-tools" class="admin-cube-text" placeholder="Figma, Illustrator, Photoshop"></textarea>
+            </section>
+          </div><!-- /page 5 -->
         </div>
 
         <div class="admin-panel__pager" data-testid="admin-pager">
           <button type="button" class="admin-pager__btn" data-testid="admin-pager-prev" aria-label="Previous page" disabled>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <span class="admin-pager__indicator" data-testid="admin-pager-indicator">1 / 4</span>
+          <span class="admin-pager__indicator" data-testid="admin-pager-indicator">1 / 5</span>
           <button type="button" class="admin-pager__btn" data-testid="admin-pager-next" aria-label="Next page">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>

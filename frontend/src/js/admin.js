@@ -288,6 +288,19 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
   const projectsList = $('[data-testid="admin-projects-list"]')
   const projectsAddBtn = $('[data-testid="admin-projects-add"]')
   const projectsEmpty = $('[data-testid="admin-projects-empty"]')
+
+  // About (page 5)
+  const aboutEyebrow = $('[data-testid="admin-about-eyebrow"]')
+  const aboutHeadingPre = $('[data-testid="admin-about-heading-pre"]')
+  const aboutHeadingEm = $('[data-testid="admin-about-heading-emphasis"]')
+  const aboutBody = $('[data-testid="admin-about-body"]')
+  const aboutPhotoPreview = $('[data-testid="admin-about-photo-preview"]')
+  const aboutPhotoInput = $('[data-testid="admin-about-photo-input"]')
+  const aboutName = $('[data-testid="admin-about-name"]')
+  const aboutRole = $('[data-testid="admin-about-role"]')
+  const aboutYears = $('[data-testid="admin-about-years"]')
+  const aboutSkills = $('[data-testid="admin-about-skills"]')
+  const aboutTools = $('[data-testid="admin-about-tools"]')
   const inputAccentPicker = $('[data-testid="admin-accent-picker"]')
   const inputAccentHex = $('[data-testid="admin-accent-hex"]')
   const swatches = panel.querySelectorAll('.admin-color__swatch')
@@ -446,6 +459,12 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     window.__motion.wheelThresh = wh
   }
 
+  const applyAbout = (s) => {
+    if (window.__about && typeof window.__about.applyAboutSettings === 'function') {
+      window.__about.applyAboutSettings(s || {})
+    }
+  }
+
   const applySettings = async (s) => {
     applyAccent(s.accent_color || DEFAULTS.accent_color)
     applyGradient(s)
@@ -453,6 +472,7 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     applyRippleEffects(s)
     applyLetterFx(s)
     applyMotion(s)
+    applyAbout(s)
     await applyCubeTextures(s)
   }
 
@@ -532,6 +552,40 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       inputWheelThreshold.value = wheel
       labelWheelThreshold.textContent = `${wheel} px`
     }
+
+    // About fields (page 5)
+    if (aboutEyebrow) aboutEyebrow.value = s.about_eyebrow || ''
+    if (aboutHeadingPre) aboutHeadingPre.value = s.about_heading_pre || ''
+    if (aboutHeadingEm) aboutHeadingEm.value = s.about_heading_emphasis || ''
+    if (aboutBody) aboutBody.value = s.about_body || ''
+    if (aboutName) aboutName.value = s.about_person_name || ''
+    if (aboutRole) aboutRole.value = s.about_person_role || ''
+    if (aboutYears) aboutYears.value = (typeof s.about_years === 'number') ? s.about_years : ''
+    if (aboutSkills) {
+      const list = Array.isArray(s.about_skills) ? s.about_skills : []
+      aboutSkills.value = list.map((sk) => `${sk.name} : ${sk.pct}`).join('\n')
+    }
+    if (aboutTools) {
+      const list = Array.isArray(s.about_tools) ? s.about_tools : []
+      aboutTools.value = list.join(', ')
+    }
+    if (aboutPhotoPreview) {
+      const url = s.about_photo_url
+      if (url) {
+        aboutPhotoPreview.style.backgroundImage = `url('${url}')`
+        aboutPhotoPreview.classList.add('has-image')
+        aboutPhotoPreview.querySelector('.admin-logo__placeholder')?.remove()
+      } else {
+        aboutPhotoPreview.style.backgroundImage = ''
+        aboutPhotoPreview.classList.remove('has-image')
+        if (!aboutPhotoPreview.querySelector('.admin-logo__placeholder')) {
+          const span = document.createElement('span')
+          span.className = 'admin-logo__placeholder'
+          span.textContent = 'No photo'
+          aboutPhotoPreview.appendChild(span)
+        }
+      }
+    }
     const accent = s.accent_color || DEFAULTS.accent_color
     inputAccentPicker.value = accent
     inputAccentHex.value = accent.toUpperCase()
@@ -546,7 +600,8 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     }
   }
 
-  const collectFormSettings = () => ({
+  const collectFormSettings = () => {
+    const base = {
     cube_text_1: inputCubeText1.value.trim() || null,
     cube_text_2: inputCubeText2.value.trim() || null,
     cube_font: inputCubeFont.value || null,
@@ -576,7 +631,28 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
     wheel_threshold: inputWheelThreshold ? parseInt(inputWheelThreshold.value, 10) : DEFAULTS.wheel_threshold,
     accent_color: inputAccentHex.value.trim() || null,
     logo_url: pendingLogoUrl || published.logo_url || null,
-  })
+    }
+    // About — page 5
+    if (aboutEyebrow) base.about_eyebrow = aboutEyebrow.value.trim() || null
+    if (aboutHeadingPre) base.about_heading_pre = aboutHeadingPre.value.trim() || null
+    if (aboutHeadingEm) base.about_heading_emphasis = aboutHeadingEm.value.trim() || null
+    if (aboutBody) base.about_body = aboutBody.value || null
+    if (aboutName) base.about_person_name = aboutName.value.trim() || null
+    if (aboutRole) base.about_person_role = aboutRole.value.trim() || null
+    if (aboutYears) base.about_years = aboutYears.value === '' ? null : parseInt(aboutYears.value, 10)
+    if (aboutSkills) {
+      const lines = aboutSkills.value.split(/\n+/).map((l) => l.trim()).filter(Boolean)
+      base.about_skills = lines.map((line) => {
+        const [name, pctRaw] = line.split(':').map((x) => x.trim())
+        const pct = Math.max(0, Math.min(100, parseInt(pctRaw, 10) || 0))
+        return { name: name || 'Skill', pct }
+      })
+    }
+    if (aboutTools) {
+      base.about_tools = aboutTools.value.split(',').map((t) => t.trim()).filter(Boolean)
+    }
+    return base
+  }
 
   // ----- token / session -----
   const setToken = (t) => {
@@ -1016,6 +1092,55 @@ export const initAdmin = ({ logoTexture, text1Texture, text2Texture }) => {
       if (labelWheelThreshold) labelWheelThreshold.textContent = `${v} px`
       window.__motion = window.__motion || {}
       window.__motion.wheelThresh = v
+    })
+  }
+
+  // ---- About (Page 5) — live preview ----
+  const liveApplyAbout = () => {
+    const partial = collectFormSettings()
+    if (window.__about && typeof window.__about.applyAboutSettings === 'function') {
+      window.__about.applyAboutSettings(partial)
+    }
+  }
+  ;[aboutEyebrow, aboutHeadingPre, aboutHeadingEm, aboutBody, aboutName, aboutRole, aboutYears, aboutSkills, aboutTools].forEach((el) => {
+    if (el) el.addEventListener('input', liveApplyAbout)
+  })
+
+  // About photo upload
+  if (aboutPhotoInput) {
+    aboutPhotoInput.addEventListener('change', async () => {
+      if (!aboutPhotoInput.files || !aboutPhotoInput.files[0]) return
+      const fd = new FormData()
+      fd.append('file', aboutPhotoInput.files[0])
+      try {
+        const res = await fetch('/api/admin/about/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: fd,
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.detail || `Upload failed (${res.status})`)
+        }
+        const json = await res.json()
+        // Persist on settings immediately
+        await apiFetch('/api/admin/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ about_photo_url: json.image_url }),
+        }, token)
+        published.about_photo_url = json.image_url
+        // Update preview thumb
+        if (aboutPhotoPreview) {
+          aboutPhotoPreview.style.backgroundImage = `url('${json.image_url}')`
+          aboutPhotoPreview.classList.add('has-image')
+          aboutPhotoPreview.querySelector('.admin-logo__placeholder')?.remove()
+        }
+        // Live update on the page
+        liveApplyAbout()
+        setPanelStatus('Photo uploaded', 'success')
+      } catch (err) {
+        setPanelStatus(err.message || 'Upload failed', 'error')
+      }
     })
   }
 

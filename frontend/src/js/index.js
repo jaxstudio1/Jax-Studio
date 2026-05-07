@@ -13,7 +13,8 @@ import content, {Types as ContentTypes} from '~js/components/content'
 import reflection from '~js/components/reflection'
 import {initAdmin} from '~js/admin'
 import {applyWelcomeLetterFxSettings, playWelcomeEntrance, playWelcomeExit} from '~js/welcomeFx'
-import {fetchAndRenderProjects, revealProjectsSection} from '~js/projects'
+import {fetchAndRenderProjects, revealProjectsSection, hideProjectsSection} from '~js/projects'
+import {applyAboutSettings, revealAboutSection, hideAboutSection} from '~js/about'
 
 import '~css/main.css'
 
@@ -274,25 +275,79 @@ const dismissWelcome = () => {
   playWelcomeExit().catch(() => {})
 }
 
-// Scroll arrow → animate overlay out + reveal projects section
-const scrollBtn = overlay.querySelector('[data-testid="welcome-scroll"]')
+// Generic "leave the welcome overlay and reveal a target section"
 let _scrolling = false
-const goToProjects = async () => {
-  if (_scrolling) return
+const _exitOverlay = async () => {
+  if (_scrolling) return false
   _scrolling = true
-  try {
-    await playWelcomeExit()
-  } catch (_) {}
+  try { await playWelcomeExit() } catch (_) {}
   overlay.classList.add('is-scrolling-out')
-  revealProjectsSection()
   setTimeout(() => {
     overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
     _scrolling = false
   }, 950)
+  return true
 }
-if (scrollBtn) scrollBtn.addEventListener('click', goToProjects)
 
-// Wheel/touch swipe-up while welcome is shown → trigger goToProjects
+// Scroll → goes to ABOUT (the new default scroll-target).
+const goToAbout = async () => {
+  if (_scrolling) return
+  await _exitOverlay()
+  hideProjectsSection()
+  revealAboutSection()
+  if (window.history && window.history.pushState) {
+    try { window.history.pushState({ route: 'about' }, '', '#about') } catch (_) {}
+  }
+}
+
+// "Past Projects" button → dedicated route.
+const goToProjects = async () => {
+  if (_scrolling) return
+  await _exitOverlay()
+  hideAboutSection()
+  revealProjectsSection()
+  if (window.history && window.history.pushState) {
+    try { window.history.pushState({ route: 'projects' }, '', '#projects') } catch (_) {}
+  }
+}
+
+// Back button on welcome — animate to cube
+const backToCube = () => {
+  overlay.classList.remove('is-active', 'is-revealed', 'is-scrolling-out')
+  if (hintEl) hintEl.style.opacity = ''
+  playWelcomeExit().catch(() => {})
+}
+
+// Back button on projects — return to home (cube + welcome state cleared)
+const backToHome = () => {
+  hideProjectsSection()
+  hideAboutSection()
+  document.documentElement.classList.remove('is-scrollable')
+  document.body.classList.remove('is-scrollable')
+  window.scrollTo({ top: 0, behavior: 'instant' })
+  if (window.history && window.history.pushState) {
+    try { window.history.pushState({ route: 'home' }, '', window.location.pathname) } catch (_) {}
+  }
+}
+
+const scrollBtn = overlay.querySelector('[data-testid="welcome-scroll"]')
+const projectsBtn = overlay.querySelector('[data-testid="welcome-projects-btn"]')
+const welcomeBackBtn = overlay.querySelector('[data-testid="welcome-close"]')
+const projectsBackBtn = document.querySelector('[data-testid="projects-back"]')
+if (scrollBtn) scrollBtn.addEventListener('click', goToAbout)
+if (projectsBtn) projectsBtn.addEventListener('click', goToProjects)
+if (welcomeBackBtn) welcomeBackBtn.addEventListener('click', backToCube)
+if (projectsBackBtn) projectsBackBtn.addEventListener('click', backToHome)
+
+// Hash-deeplink — open /projects or /about directly
+window.addEventListener('popstate', (e) => {
+  const hash = (window.location.hash || '').replace('#', '')
+  if (hash === 'projects') { hideAboutSection(); revealProjectsSection() }
+  else if (hash === 'about') { hideProjectsSection(); revealAboutSection() }
+  else { hideProjectsSection(); hideAboutSection(); document.body.classList.remove('is-scrollable'); document.documentElement.classList.remove('is-scrollable'); window.scrollTo({ top: 0 }) }
+})
+
+// Wheel/touch swipe-up while welcome is shown → trigger goToAbout
 let _wheelArmed = false
 const armWheel = () => {
   if (_wheelArmed) return
@@ -305,7 +360,7 @@ window.addEventListener('wheel', (e) => {
   const thresh = (window.__motion && window.__motion.wheelThresh) || 12
   if (e.deltaY > thresh) {
     armWheel()
-    goToProjects()
+    goToAbout()
   }
 }, { passive: true })
 
@@ -323,7 +378,7 @@ overlay.addEventListener('touchmove', (e) => {
   const thresh = (window.__motion && window.__motion.swipeThresh) || 36
   if (dy > thresh) {
     _touchStartY = null
-    goToProjects()
+    goToAbout()
   }
 }, { passive: true })
 overlay.addEventListener('touchend', () => { _touchStartY = null }, { passive: true })
@@ -331,9 +386,28 @@ overlay.addEventListener('touchend', () => { _touchStartY = null }, { passive: t
 // Public API for admin live-preview & published settings
 window.__welcomeFx = { applyWelcomeLetterFxSettings }
 window.__projects = { fetchAndRenderProjects }
+window.__about = { applyAboutSettings }
 
-// Initial render of past projects (background prep so they're ready when user scrolls)
+// Initial render of past projects + about (background prep so they're ready when user navigates)
 fetchAndRenderProjects()
+;(async () => {
+  try {
+    const res = await fetch('/api/settings')
+    const s = await res.json()
+    applyAboutSettings(s)
+  } catch (e) {}
+})()
+
+// Hash-deeplink on initial load
+const _initialHash = (window.location.hash || '').replace('#', '')
+if (_initialHash === 'projects') {
+  // Hide overlay completely so projects route is the landing
+  overlay.classList.remove('is-active', 'is-revealed')
+  setTimeout(() => revealProjectsSection(), 100)
+} else if (_initialHash === 'about') {
+  overlay.classList.remove('is-active', 'is-revealed')
+  setTimeout(() => revealAboutSection(), 100)
+}
 
 stageEl.addEventListener('click', (e) => {
   triggerWelcome(e.clientX, e.clientY)
