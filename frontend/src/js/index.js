@@ -321,6 +321,7 @@ const enterAboutScrollMode = () => {
 const exitAboutScrollMode = () => {
   document.documentElement.classList.remove('is-scrollable')
   document.body.classList.remove('is-scrollable')
+  overlay.classList.remove('is-exiting')
   hideAboutSection()
   window.scrollTo({ top: 0, behavior: 'instant' })
   _aboutFxState = 'entrance'
@@ -339,9 +340,14 @@ const onScrollHybrid = () => {
     const upAt = vh * 0.10
     if (_aboutFxState === 'entrance' && y > downAt) {
       _aboutFxState = 'exit'
+      // Toggle is-exiting so greet / "!" / sub / actions / back / scroll all
+      // fade-and-rise via the bidirectional CSS transitions.
+      overlay.classList.add('is-exiting')
       playAboutExit().catch(() => {})
     } else if (_aboutFxState === 'exit' && y < upAt) {
       _aboutFxState = 'entrance'
+      // Removing is-exiting reverses the same transitions — buttons fade BACK in
+      overlay.classList.remove('is-exiting')
       playAboutEntrance().catch(() => {})
     }
   })
