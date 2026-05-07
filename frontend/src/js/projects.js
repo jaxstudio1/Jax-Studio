@@ -105,6 +105,7 @@ export const revealProjectsSection = () => {
   if (!section) return
   section.classList.add('is-active')
   section.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('is-scrollable')
   document.body.classList.add('is-scrollable')
   // scroll to it
   requestAnimationFrame(() => {

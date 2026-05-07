@@ -43,6 +43,18 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
   - `devicemotion` listener tracks frame-to-frame acceleration delta; when > 18 m/s² it boosts auto-rotation up to 7×, decaying back to normal in ~1.5s
   - Shares the same first-gesture permission flow as orientation
 
+### Phase 14.1 (Feb 2026) — Mobile fixes for scrolling + persistent UI
+User reported on mobile:
+1. couldn't scroll the welcome overlay down with a finger swipe (only tapping the bottom worked)
+2. projects section wasn't scrollable
+3. "CLICK THE CUBE" hint persisted on the projects view
+
+**Fixes:**
+- **Touch-swipe to projects:** added `touchstart` / `touchmove` / `touchend` listeners on `.welcome-overlay` that detect a >36 px upward swipe and trigger `goToProjects()` (mirroring the existing wheel-down behavior). Mobile users now reveal projects with their finger, not just a tap on the arrow.
+- **Body & html scrolling unlocked:** `html.is-scrollable` and `body.is-scrollable` now both override `overflow: hidden` to `overflow-y: auto !important`, set `height: auto`, and enable iOS-style `-webkit-overflow-scrolling: touch`. The `<html>` class is also added in JS via `document.documentElement.classList.add('is-scrollable')`.
+- **`<main>` overflow override:** the main element had `width:100vw; height:100vh; overflow:hidden` clipping the projects section to the first viewport. Added `body.is-scrollable main { overflow: visible; height: auto; min-height: 100vh }` so the full grid is reachable. Verified live: `scrollHeight` jumped from 844 → 2135 px on a 390×844 mobile viewport, scrolling now lands at any y.
+- **Cube hint + COMING SOON tagline hidden** when projects are active via `body.is-scrollable .hint { opacity: 0; visibility: hidden; pointer-events: none }` and same on `.frame__tagline`. Verified `hintVis: 'hidden'` after scroll.
+
 ### Phase 14 (Feb 2026) — Letter animations, scroll-to-projects, & admin Page 4 CMS
 A massive feature drop covering 3 user requests in one pass:
 

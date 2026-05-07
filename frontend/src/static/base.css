@@ -465,9 +465,21 @@ main {
 }
 
 /* === Past Projects section === */
+html.is-scrollable,
 body.is-scrollable {
-  overflow-y: auto;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  height: auto;
 }
+body.is-scrollable main {
+  overflow: visible;
+  height: auto;
+  min-height: 100vh;
+}
+body.is-scrollable .hint { opacity: 0 !important; pointer-events: none; visibility: hidden; }
+body.is-scrollable .frame__tagline { opacity: 0 !important; pointer-events: none; }
+body.is-scrollable .content { touch-action: auto; }
 .projects {
   position: relative;
   z-index: 5;

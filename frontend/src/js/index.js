@@ -308,6 +308,24 @@ window.addEventListener('wheel', (e) => {
   }
 }, { passive: true })
 
+// Touch swipe-up — primary path on mobile (no wheel events)
+let _touchStartY = null
+overlay.addEventListener('touchstart', (e) => {
+  if (!overlay.classList.contains('is-revealed')) return
+  if (e.touches && e.touches.length > 0) _touchStartY = e.touches[0].clientY
+}, { passive: true })
+overlay.addEventListener('touchmove', (e) => {
+  if (_touchStartY == null) return
+  if (!overlay.classList.contains('is-revealed')) return
+  if (overlay.classList.contains('is-scrolling-out')) return
+  const dy = _touchStartY - (e.touches && e.touches[0] ? e.touches[0].clientY : _touchStartY)
+  if (dy > 36) {  // user swiped up at least 36 px
+    _touchStartY = null
+    goToProjects()
+  }
+}, { passive: true })
+overlay.addEventListener('touchend', () => { _touchStartY = null }, { passive: true })
+
 // Public API for admin live-preview & published settings
 window.__welcomeFx = { applyWelcomeLetterFxSettings }
 window.__projects = { fetchAndRenderProjects }
