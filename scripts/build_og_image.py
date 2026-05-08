@@ -170,6 +170,30 @@ def main():
         out_path="/app/frontend/src/static/og-image-square.png",
     )
 
+    # ---- Story 1080x1920 (Instagram / Facebook / LinkedIn Stories, 9:16) ----
+    # Title pushed to the upper third of the safe area, COMING SOON anchored
+    # near the bottom. Wide vertical glow column on the right adds depth and
+    # complements the tall canvas. Brand chip top-left with extra padding to
+    # avoid the typical Story top-bar overlay.
+    render_card(
+        W=1080, H=1920,
+        layout=dict(
+            grid_step=60,
+            glow_cx=900, glow_cy=620, glow_r=560,
+            brand_x=60, brand_y=130, brand_size=22,
+            title_x=60, title_y=720, title_size=240, line2_offset=215,
+            tagline_y_off=255,
+            tagline_text="GRAPHIC DESIGN  ·  2026",
+            tagline_size=22,
+            soon_size=26,
+            # COMING SOON anchored well above the bottom edge so the Story
+            # progress dots / reply UI / swipe-up cover (~250-300 px tall on
+            # Instagram & Facebook Stories) don't obscure it.
+            soon_pos=lambda W, H, tw, th: (W - 60 - tw, H - 280 - th),
+        ),
+        out_path="/app/frontend/src/static/og-image-story.png",
+    )
+
 
 if __name__ == "__main__":
     main()

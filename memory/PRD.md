@@ -19,7 +19,32 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
-### Phase 14.12 (Feb 2026) — Square 1080×1080 OG variant
+### Phase 14.13 (Feb 2026) — Baked-in letter-FX defaults + 9:16 Story OG variant
+
+**1. Letter FX baked into seed/reset.** Extracted a shared `SETTINGS_DEFAULTS` constant in `/app/backend/server.py` containing:
+- `welcome_letter_effect = "Eurhythmic"`
+- `welcome_letter_apply_to = "both"`
+- `welcome_letter_speed = 1.0`
+- `welcome_letter_density = "normal"`
+- `welcome_letter_shapes = "mix"`
+- `welcome_letter_fill = True`
+- `welcome_letter_use_accent = False`
+- `access_enabled = True`
+
+Used in BOTH `_get_settings_doc()` (first-time seed for a fresh install) AND the `/api/admin/settings/reset` endpoint. Result: clicking Reset now still gives the user the polished decorative letter animation behaviour instead of plain text. 41/41 backend pytest still pass.
+
+**2. 9:16 Story variant added.** New 1080×1920 render in `/app/scripts/build_og_image.py`:
+- `og-image-story.png` — Instagram Stories / Facebook Stories / LinkedIn Stories.
+- Layout balanced for the tall canvas: brand chip pushed down to y=130 (clears the Story top progress bar / profile overlay), title block at y=720–935 (vertical-center of safe content area), wide vertical glow column on the right at y=620, COMING SOON anchored at H-280px from bottom (clears the ~250-300 px reply box / swipe-up cover on IG & FB).
+- Same shared design language: hairline grid, ● JAX STUDIO chip top-left, stacked white JAX / orange-outlined STUDIO, accent rule + tagline "GRAPHIC DESIGN · 2026", bottom-right ● COMING SOON, hairline corner brackets.
+- AI image-analysis confirmed safe-zone placement and balanced composition.
+
+All three sizes regenerate from one command:  `python3 /app/scripts/build_og_image.py`. Output:
+- `/og-image.png` — 1200×630, ~124 KB (link previews)
+- `/og-image-square.png` — 1080×1080, ~139 KB (IG / LI feed)
+- `/og-image-story.png` — 1080×1920, ~228 KB (IG / FB / LI Stories)
+
+
 - `/app/scripts/build_og_image.py` refactored into a reusable `render_card(W, H, layout, out_path)` function — single source of design truth, two outputs:
   - **`og-image.png`** (1200×630) — Twitter / FB / LinkedIn link preview / Slack / Discord / iMessage. Layout: title at y=220, tagline "GRAPHIC DESIGN · BRAND IDENTITY · 2026", glow at top-right.
   - **`og-image-square.png`** (1080×1080) — Instagram feed / LinkedIn square. Layout re-balanced: title at y=380 (vertical-centered for the taller canvas), shorter tagline "GRAPHIC DESIGN · 2026" (one-line at narrower width), proportionally larger brand chip (21px) and COMING SOON (24px), wider radial glow (r=460). Same design language: hairline grid, ● JAX STUDIO chip top-left, stacked white JAX / orange-outlined STUDIO, accent rule + tagline, bottom-right ● COMING SOON, hairline corner brackets.

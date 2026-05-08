@@ -494,11 +494,30 @@ def _clear_failures(ip: str):
 # ================= Settings helpers =================
 SETTINGS_DOC_ID = "main"
 
+# Baked-in defaults applied on first-time-seed AND on Reset. Designed so a
+# fresh install / reset still gives the user the polished "Jax Studio look"
+# (Eurhythmic codrops letter FX on heading + sub) — instead of plain text.
+SETTINGS_DEFAULTS = {
+    "welcome_letter_effect": "Eurhythmic",
+    "welcome_letter_speed": 1.0,
+    "welcome_letter_stagger": None,
+    "welcome_letter_density": "normal",
+    "welcome_letter_shapes": "mix",
+    "welcome_letter_fill": True,
+    "welcome_letter_use_accent": False,
+    "welcome_letter_apply_to": "both",
+    "access_enabled": True,
+}
+
 
 async def _get_settings_doc() -> dict:
     doc = await db.site_settings.find_one({"id": SETTINGS_DOC_ID}, {"_id": 0})
     if not doc:
-        doc = {"id": SETTINGS_DOC_ID, "updated_at": datetime.now(timezone.utc).isoformat()}
+        doc = {
+            "id": SETTINGS_DOC_ID,
+            **SETTINGS_DEFAULTS,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
         await db.site_settings.insert_one(doc.copy())
     return {k: v for k, v in doc.items() if k != "id"}
 
@@ -669,9 +688,17 @@ async def admin_reset_settings(_: dict = Depends(require_admin)):
             "welcome_letter_spacing": None, "welcome_line_spacing": None,
             "accent_color": None,
             "ripple_speed": None, "ripple_tint": None, "ripple_ring_count": None,
-            "welcome_letter_effect": None, "welcome_letter_speed": None, "welcome_letter_stagger": None,
-            "welcome_letter_density": None, "welcome_letter_shapes": None, "welcome_letter_fill": None,
-            "welcome_letter_use_accent": None, "welcome_letter_apply_to": None,
+            # Letter FX baked-in default — Eurhythmic codrops effect applied
+            # to BOTH heading and sub. So a "Reset" still preserves the user's
+            # preferred decorative letter animation behaviour.
+            "welcome_letter_effect": "Eurhythmic",
+            "welcome_letter_speed": 1.0,
+            "welcome_letter_stagger": None,
+            "welcome_letter_density": "normal",
+            "welcome_letter_shapes": "mix",
+            "welcome_letter_fill": True,
+            "welcome_letter_use_accent": False,
+            "welcome_letter_apply_to": "both",
             "swipe_threshold": None, "wheel_threshold": None,
             "about_eyebrow": None, "about_heading_pre": None, "about_heading_emphasis": None,
             "about_body": None, "about_photo_url": None, "about_person_name": None,
