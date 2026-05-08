@@ -19,7 +19,14 @@ User chose to customize the Apple Fifth Avenue WebGL cube demo into a "Coming So
 
 ## Implemented Features
 
-### Phase 14.11 (Feb 2026) — Letter FX extends to greet + buttons; smooth reverse-fade to cube
+### Phase 14.12 (Feb 2026) — Square 1080×1080 OG variant
+- `/app/scripts/build_og_image.py` refactored into a reusable `render_card(W, H, layout, out_path)` function — single source of design truth, two outputs:
+  - **`og-image.png`** (1200×630) — Twitter / FB / LinkedIn link preview / Slack / Discord / iMessage. Layout: title at y=220, tagline "GRAPHIC DESIGN · BRAND IDENTITY · 2026", glow at top-right.
+  - **`og-image-square.png`** (1080×1080) — Instagram feed / LinkedIn square. Layout re-balanced: title at y=380 (vertical-centered for the taller canvas), shorter tagline "GRAPHIC DESIGN · 2026" (one-line at narrower width), proportionally larger brand chip (21px) and COMING SOON (24px), wider radial glow (r=460). Same design language: hairline grid, ● JAX STUDIO chip top-left, stacked white JAX / orange-outlined STUDIO, accent rule + tagline, bottom-right ● COMING SOON, hairline corner brackets.
+- AI image-analysis confirmed the square is balanced ("JAX in vertical center, STUDIO slightly below... feels balanced") and designer-rendered.
+- Both files served at `/og-image.png` and `/og-image-square.png` via the new Express server. The square is a downloadable asset for grabbing into Instagram/LinkedIn posts; the wide remains the canonical OG `<meta>` for link previews.
+
+
 User feedback: "Under the 'Decorative letter animation' i need 'welcome to' and the buttons to animate as well (Animate in & animate out). Also when i click the back button in the center under start a project & past projects button it should reverse all the animations smoothly to show the cube instead of an instant cut".
 
 - **DecorativeLetterAnimations now applied to 5 elements** (was 2): the existing `_headingWord` (JAX STUDIO!) + `_subWord` (tagline), plus new `_greetWord` ("Welcome to"), `_ctaPrimaryWord` ("Start a project" button label), and `_ctaSecondaryWord` ("Past Projects" button label). All five fire in unison on entrance, exit, scroll-threshold-down, scroll-threshold-up, AND smooth back-to-cube. Shape totals are weighted (greet 45%, ctas 35% of the heading shape count) so the per-letter swirl never overflows the button outlines or visually competes with the headline.
