@@ -38,7 +38,7 @@ jobs:
             mirror -R --delete --verbose ./frontend/dist/ /public_html/;
             
             # 2. This sends the API/Database logic (Backend)
-            mirror -R --delete --verbose ./backend/ /backend/;
+            mirror -R --delete --verbose ./backend/ backend/;
             
             bye
           "
