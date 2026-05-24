@@ -22,13 +22,16 @@ jobs:
         working-directory: ./frontend
         run: npx cross-env NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider webpack
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASS }}
-          local-dir: ./frontend/dist/
-          server-dir: /public_html/
-          protocol: ftps
-          port: 21
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
+
+      - name: Deploy via lftp
+        run: |
+          lftp -c "
+            set ftp:ssl-allow yes;
+            set ftp:ssl-force no;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ftp.jaxstudio.ink;
+            mirror -R --delete --verbose ./frontend/dist/ /public_html/;
+            bye
+          "
