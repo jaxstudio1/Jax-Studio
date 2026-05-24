@@ -23,11 +23,12 @@ jobs:
         run: npx cross-env NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider webpack
 
       - name: Deploy via FTP
-        uses: sebastianpopp/ftp-action@releases/v2
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASS }}
           local-dir: ./frontend/dist/
           server-dir: /public_html/
+          protocol: ftps
           port: 21
