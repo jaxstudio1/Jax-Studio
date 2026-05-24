@@ -20,7 +20,7 @@ jobs:
 
       - name: Build
         working-directory: ./frontend
-        run: cross-env NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider webpack
+        run: npx cross-env NODE_ENV=production NODE_OPTIONS=--openssl-legacy-provider webpack
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
