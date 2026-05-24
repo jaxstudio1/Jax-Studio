@@ -31,7 +31,14 @@ jobs:
             set ftp:ssl-allow yes;
             set ftp:ssl-force no;
             set ssl:verify-certificate no;
+            set ftp:passive-mode true;
             open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' server326.web-hosting.com;
+            
+            # 1. This sends the website (Frontend)
             mirror -R --delete --verbose ./frontend/dist/ /public_html/;
+            
+            # 2. This sends the API/Database logic (Backend)
+            mirror -R --delete --verbose ./backend/ /backend/;
+            
             bye
           "
