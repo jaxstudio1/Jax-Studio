@@ -34,14 +34,11 @@ jobs:
             set ftp:passive-mode true;
             open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' server326.web-hosting.com;
             
-            # 1. Sync Frontend
+            # Sync Frontend to public_html
             mirror -R --delete --verbose ./frontend/dist/ public_html/
             
-            # 2. Sync Backend
+            # Sync Backend to the backend folder (includes its own requirements.txt)
             mirror -R --delete --verbose ./backend/ backend/
-            
-            # 3. Put requirements.txt specifically inside the backend folder
-            put requirements.txt -o backend/requirements.txt
             
             bye
           "
