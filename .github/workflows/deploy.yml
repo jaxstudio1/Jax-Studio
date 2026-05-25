@@ -34,11 +34,11 @@ jobs:
             set ftp:passive-mode true;
             open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' server326.web-hosting.com;
             
-            # 1. Sync Frontend (Note: no leading slash on jaxstudio.ink)
-            mirror -R --delete --verbose ./frontend/dist/ jaxstudio.ink/
+            # 1. Sync Frontend to the REAL public_html (going up two levels)
+            mirror -R --delete --verbose ./frontend/dist/ ../../public_html/
             
-            # 2. Sync Backend (Note: no leading slash on backend)
-            mirror -R --delete --verbose ./backend/ backend/
+            # 2. Sync Backend to the REAL backend folder (going up two levels)
+            mirror -R --delete --verbose ./backend/ ../../backend/
             
             bye
           "
