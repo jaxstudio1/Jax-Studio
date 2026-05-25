@@ -34,7 +34,7 @@ jobs:
             set ftp:passive-mode true;
             open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' server326.web-hosting.com;
             
-            # 1. Sync Frontend to the REAL public_html (going up two levels) hopefully this doesn't mess with the backend folder
+            # 1. Sync Frontend to the REAL public_html (going up two levels)
             mirror -R --delete --verbose ./frontend/dist/ ../../public_html/
             
             # 2. Sync Backend to the REAL backend folder (going up two levels)
