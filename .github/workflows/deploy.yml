@@ -32,7 +32,7 @@ jobs:
             set ftp:ssl-force no;
             set ssl:verify-certificate no;
             set ftp:passive-mode true;
-            open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ftp.jaxstudio.ink;
+            open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' server326.web-hosting.com;
             
             # 1. Sync Frontend to the REAL public_html (going up two levels)
             mirror -R --delete --verbose ./frontend/dist/ ../../public_html/
